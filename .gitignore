@@ -1,0 +1,34 @@
+# Global
+.DS_Store
+.env
+.env.*
+
+# Node modules
+BACKOFFICE/node_modules/
+APP/node_modules/
+API/node_modules/
+
+# Builds
+BACKOFFICE/dist/
+APP/dist/
+API/dist/
+BACKOFFICE/build/
+APP/build/
+API/build/
+
+# TypeScript
+**/*.tsbuildinfo
+
+# Logs
+**/*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+**/coverage/
+
+# IDEs / Editors
+.vscode/
+.idea/
