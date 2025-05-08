@@ -16,14 +16,9 @@ export default function ExerciseForm({
     duration: number;
     level: string;
     categories?: string[];
+    adminId?: string;
   };
-  onSubmit: (data: {
-    name: string;
-    description: string;
-    duration: number;
-    level: string;
-    categoryIds: string[];
-  }) => void;
+  onSubmit: (formData: FormData) => void;
   loading: boolean;
 }) {
   const [form, setForm] = useState({
@@ -33,6 +28,9 @@ export default function ExerciseForm({
     level: initialData?.level || "",
     categories: initialData?.categories || [],
   });
+
+  const [audio, setAudio] = useState<File | null>(null);
+  const [image, setImage] = useState<File | null>(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -49,13 +47,20 @@ export default function ExerciseForm({
   };
 
   const handleSubmit = () => {
-    onSubmit({
-      name: form.name,
-      description: form.description,
-      duration: form.duration,
-      level: form.level,
-      categoryIds: form.categories,
-    });
+    const data = new FormData();
+
+    console.log(JSON.stringify(form.categories), "form");
+    data.append("name", form.name);
+    data.append("description", form.description);
+    data.append("duration", String(form.duration));
+    data.append("level", form.level);
+    data.append("categoryIds", JSON.stringify(form.categories));
+    data.append("adminId", initialData?.adminId || "");
+
+    if (audio) data.append("audio", audio);
+    if (image) data.append("image", image);
+
+    onSubmit(data);
   };
 
   return (
@@ -95,6 +100,22 @@ export default function ExerciseForm({
             </label>
           ))}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Audio (MP3)</label>
+        <Input
+          type="file"
+          accept="audio/mp3"
+          onChange={(e) => setAudio(e.target.files?.[0] || null)}
+        />
+
+        <label className="block text-sm font-medium">Image</label>
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setImage(e.target.files?.[0] || null)}
+        />
       </div>
 
       <Button onClick={handleSubmit} disabled={loading} className="w-full">

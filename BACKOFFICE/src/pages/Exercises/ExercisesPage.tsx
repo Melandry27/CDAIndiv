@@ -41,7 +41,7 @@ export default function ExercisesPage() {
   const { user } = useAuth();
 
   const createMutation = useMutation({
-    mutationFn: createBreathingExercise,
+    mutationFn: (data: FormData) => createBreathingExercise(data),
     onSuccess: () => {
       queryClient.invalidateQueries(["exercises"]);
       toast.success("Exercise created");
@@ -51,7 +51,7 @@ export default function ExercisesPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: FormData }) =>
       updateBreathingExercise(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(["exercises"]);
@@ -84,10 +84,9 @@ export default function ExercisesPage() {
                 <DialogTitle>Add Breathing Exercise</DialogTitle>
               </DialogHeader>
               <ExerciseForm
+                initialData={{ adminId: user?.adminId }}
                 loading={createMutation.isPending}
-                onSubmit={(data) =>
-                  createMutation.mutate({ ...data, adminId: user?.adminId })
-                }
+                onSubmit={(formData) => createMutation.mutate(formData)}
               />
             </DialogContent>
           </Dialog>
@@ -134,13 +133,17 @@ export default function ExercisesPage() {
                             <ExerciseForm
                               initialData={{
                                 ...exercise,
+                                adminId: user?.adminId,
                                 categories:
                                   exercise.categories?.map((cat) => cat.id) ||
                                   [],
                               }}
                               loading={updateMutation.isPending}
-                              onSubmit={(data) =>
-                                updateMutation.mutate({ id: exercise.id, data })
+                              onSubmit={(formData) =>
+                                updateMutation.mutate({
+                                  id: exercise.id,
+                                  data: formData,
+                                })
                               }
                             />
                           </DialogContent>

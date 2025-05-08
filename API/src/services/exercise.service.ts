@@ -6,16 +6,35 @@ export class BreathingExerciseService {
     description: string;
     duration: number;
     level: string;
-    categoryIds: string[];
+    categoryIds: string;
     adminId: string;
+    audioUrl?: string;
+    imageUrl?: string;
   }) {
-    const { categoryIds, ...rest } = data;
+    const {
+      categoryIds,
+      name,
+      description,
+      duration,
+      level,
+      adminId,
+      audioUrl,
+      imageUrl,
+    } = data;
+
+    const parsedCategories: string[] = JSON.parse(categoryIds);
 
     return prisma.breathingExercise.create({
       data: {
-        ...rest,
+        name,
+        description,
+        duration,
+        level,
+        adminId,
+        audioUrl,
+        imageUrl,
         categories: {
-          connect: categoryIds.map((id) => ({ id })),
+          connect: parsedCategories.map((id) => ({ id })),
         },
       },
     });
@@ -46,19 +65,33 @@ export class BreathingExerciseService {
       description: string;
       duration: number;
       level: string;
-      adminId: string;
-      categoryIds: string[];
+      categoryIds: string | string[];
+      audioUrl: string;
+      imageUrl: string;
     }>
   ) {
+    let parsedCategoryIds: string[] | undefined;
+
+    if (typeof data.categoryIds === "string") {
+      try {
+        parsedCategoryIds = JSON.parse(data.categoryIds);
+      } catch (error) {
+        console.error("Échec du parsing de categoryIds :", error);
+        parsedCategoryIds = [];
+      }
+    } else if (Array.isArray(data.categoryIds)) {
+      parsedCategoryIds = data.categoryIds;
+    }
+
     const { categoryIds, ...rest } = data;
 
     return prisma.breathingExercise.update({
       where: { id },
       data: {
         ...rest,
-        ...(categoryIds && {
+        ...(parsedCategoryIds && {
           categories: {
-            set: categoryIds.map((id) => ({ id })),
+            set: parsedCategoryIds.map((id) => ({ id })),
           },
         }),
       },
