@@ -7,9 +7,11 @@ type DecodedToken = {
   name: string;
   exp: number;
   iat: number;
+  adminId: string;
 };
 
 type AuthContextType = {
+  adminId: string | null;
   token: string | null;
   user: DecodedToken | null;
   login: (token: string) => void;

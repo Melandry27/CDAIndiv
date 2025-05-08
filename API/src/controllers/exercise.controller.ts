@@ -13,6 +13,7 @@ export class BreathingExerciseController {
   async getAll(req: Request, res: Response) {
     const breathingExercises =
       await breathingExerciseService.getAllBreathingExercises();
+
     res.json(breathingExercises);
   }
 

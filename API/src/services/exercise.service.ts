@@ -6,10 +6,18 @@ export class BreathingExerciseService {
     description: string;
     duration: number;
     level: string;
+    categoryIds: string[];
     adminId: string;
   }) {
+    const { categoryIds, ...rest } = data;
+
     return prisma.breathingExercise.create({
-      data,
+      data: {
+        ...rest,
+        categories: {
+          connect: categoryIds.map((id) => ({ id })),
+        },
+      },
     });
   }
 
@@ -17,6 +25,7 @@ export class BreathingExerciseService {
     return prisma.breathingExercise.findMany({
       include: {
         admin: true,
+        categories: true,
       },
     });
   }
@@ -38,11 +47,21 @@ export class BreathingExerciseService {
       duration: number;
       level: string;
       adminId: string;
+      categoryIds: string[];
     }>
   ) {
+    const { categoryIds, ...rest } = data;
+
     return prisma.breathingExercise.update({
       where: { id },
-      data,
+      data: {
+        ...rest,
+        ...(categoryIds && {
+          categories: {
+            set: categoryIds.map((id) => ({ id })),
+          },
+        }),
+      },
     });
   }
 

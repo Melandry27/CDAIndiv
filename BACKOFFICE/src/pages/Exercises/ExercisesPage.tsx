@@ -25,6 +25,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "../../context/AuthContext";
 
 export default function ExercisesPage() {
   const queryClient = useQueryClient();
@@ -36,6 +37,8 @@ export default function ExercisesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editExercise, setEditExercise] = useState<any>(null);
+
+  const { user } = useAuth();
 
   const createMutation = useMutation({
     mutationFn: createBreathingExercise,
@@ -82,7 +85,9 @@ export default function ExercisesPage() {
               </DialogHeader>
               <ExerciseForm
                 loading={createMutation.isPending}
-                onSubmit={(data) => createMutation.mutate(data)}
+                onSubmit={(data) =>
+                  createMutation.mutate({ ...data, adminId: user?.adminId })
+                }
               />
             </DialogContent>
           </Dialog>
@@ -127,7 +132,12 @@ export default function ExercisesPage() {
                               <DialogTitle>Edit Breathing Exercise</DialogTitle>
                             </DialogHeader>
                             <ExerciseForm
-                              initialData={exercise}
+                              initialData={{
+                                ...exercise,
+                                categories:
+                                  exercise.categories?.map((cat) => cat.id) ||
+                                  [],
+                              }}
                               loading={updateMutation.isPending}
                               onSubmit={(data) =>
                                 updateMutation.mutate({ id: exercise.id, data })

@@ -43,16 +43,18 @@ model BreathingExercise {
 
   exerciseSessions ExerciseSession[]
 
-  categories       Category[]         // Relation N:N implicite
+  categories       Category[]        @relation("Category")
 }
 
 model Category {
   id         String              @id @default(uuid())
   name       String              @unique
+  icon       String               
   createdAt  DateTime            @default(now())
 
-  exercises  BreathingExercise[] // Relation N:N implicite
+  exercises  BreathingExercise[]
 }
+
 
 model ExerciseSession {
   id                String             @id @default(uuid())

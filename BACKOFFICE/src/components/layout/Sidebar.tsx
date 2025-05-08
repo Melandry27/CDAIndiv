@@ -11,6 +11,7 @@ export default function Sidebar() {
     { name: "Breathing Exercises", path: "/exercises" },
     { name: "Exercise Sessions", path: "/sessions" },
     { name: "Histories", path: "/histories" },
+    { name: "Categories", path: "/categories" },
   ];
 
   return (

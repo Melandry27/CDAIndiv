@@ -5,15 +5,18 @@ const categoryService = new CategoryService();
 
 export class CategoryController {
   async create(req: Request, res: Response) {
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ message: "Name is required" });
+    const { name, icon } = req.body;
 
-    const category = await categoryService.createCategory(name);
+    if (!name || !icon)
+      return res.status(400).json({ message: "Name and icon are required" });
+
+    const category = await categoryService.createCategory(name, icon);
     res.status(201).json(category);
   }
 
   async getAll(_req: Request, res: Response) {
     const categories = await categoryService.getAllCategories();
+
     res.json(categories);
   }
 

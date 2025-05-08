@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import Sidebar from "./components/layout/Sidebar";
 import ProtectedRoute from "./components/routing/ProtectedRoute";
 import AdminsPage from "./pages/Admins/AdminsPage";
+import CategoriesPage from "./pages/Category/CategoryPage";
 import ExercisesPage from "./pages/Exercises/ExercisesPage";
 import HistoriesPage from "./pages/Histories/HistoriesPage";
 import Home from "./pages/Home";
@@ -27,6 +28,7 @@ export default function App() {
                   <Route path="/admins" element={<AdminsPage />} />
                   <Route path="/sessions" element={<SessionsPage />} />
                   <Route path="/histories" element={<HistoriesPage />} />
+                  <Route path="/categories" element={<CategoriesPage />} />
                 </Routes>
               </div>
             </div>
