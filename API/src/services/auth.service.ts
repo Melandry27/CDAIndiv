@@ -37,9 +37,20 @@ export class AuthService {
       throw new Error("Invalid credentials");
     }
 
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: "1d",
-    });
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        dateOfBirth: user.dateOfBirth,
+        phoneNumber: user.phoneNumber,
+        address: user.address,
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
 
     return { token };
   }

@@ -31,27 +31,39 @@ model Admin {
 }
 
 model BreathingExercise {
-  id            String             @id @default(uuid())
-  name          String
-  description   String
-  duration      Int
-  level         String
+  id               String             @id @default(uuid())
+  name             String
+  description      String
+  duration         Int
+  level            String
+  createdAt        DateTime           @default(now())
+
+  adminId          String
+  admin            Admin              @relation(fields: [adminId], references: [id])
 
   exerciseSessions ExerciseSession[]
-  adminId        String
-  admin          Admin              @relation(fields: [adminId], references: [id])
+
+  categories       Category[]         // Relation N:N implicite
+}
+
+model Category {
+  id         String              @id @default(uuid())
+  name       String              @unique
+  createdAt  DateTime            @default(now())
+
+  exercises  BreathingExercise[] // Relation N:N implicite
 }
 
 model ExerciseSession {
-  id              String             @id @default(uuid())
-  sessionDateTime DateTime
+  id                String             @id @default(uuid())
+  sessionDateTime   DateTime
   performedDuration Int
   
-  userId          String
-  user            User               @relation(fields: [userId], references: [id])
+  userId            String
+  user              User               @relation(fields: [userId], references: [id])
 
-  exerciseId      String
-  exercise        BreathingExercise  @relation(fields: [exerciseId], references: [id])
+  exerciseId        String
+  exercise          BreathingExercise  @relation(fields: [exerciseId], references: [id])
 }
 
 model History {
