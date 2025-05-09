@@ -11,5 +11,9 @@ router.post(
   authController.forgotPassword.bind(authController)
 );
 router.post("/login-admin", authController.loginAdmin.bind(authController));
+router.delete(
+  "/full-delete/:id",
+  authController.fullDelete.bind(authController)
+);
 
 export default router;

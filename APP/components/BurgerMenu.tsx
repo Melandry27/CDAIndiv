@@ -56,13 +56,12 @@ export default function BurgerMenu({
             <MenuItem
               icon="account-outline"
               label="Mon profil"
-              onPress={() => console.log("Profil")}
+              onPress={() => {
+                router.push("/profile");
+                onClose();
+              }}
             />
-            <MenuItem
-              icon="cog-outline"
-              label="Paramètres"
-              onPress={() => console.log("Paramètres")}
-            />
+
             <MenuItem
               icon="logout"
               label="Déconnexion"

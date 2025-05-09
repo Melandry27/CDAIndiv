@@ -43,4 +43,19 @@ export class AuthController {
       res.status(400).json({ message: (error as Error).message });
     }
   }
+
+  async fullDelete(req: Request, res: Response) {
+    const { id } = req.params;
+    try {
+      await authService.deleteUserAndRelatedData(id);
+      res
+        .status(200)
+        .json({ message: "Utilisateur et données associées supprimés." });
+    } catch (error) {
+      console.error("Erreur suppression utilisateur :", error);
+      res
+        .status(500)
+        .json({ error: "Échec de la suppression de l'utilisateur." });
+    }
+  }
 }

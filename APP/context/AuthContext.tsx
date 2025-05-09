@@ -7,6 +7,10 @@ type DecodedUser = {
   email: string;
   name: string;
   exp: number;
+  phoneNumber: string;
+  address: string;
+  dateOfBirth: string;
+  iat: number;
 };
 
 type AuthContextType = {

@@ -91,4 +91,11 @@ export class AuthService {
 
     return { token };
   }
+
+  async deleteUserAndRelatedData(userId: string) {
+    await prisma.exerciseSession.deleteMany({ where: { userId } });
+    await prisma.favorite.deleteMany({ where: { userId } });
+    await prisma.history.deleteMany({ where: { userId } });
+    await prisma.user.delete({ where: { id: userId } });
+  }
 }
