@@ -31,22 +31,25 @@ export default function ExerciseScreen() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [timer, setTimer] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
+
   const intervalRef = useRef<number | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
   const loadExercise = async () => {
     try {
       setLoading(true);
-      if (!id) {
-        console.error("Aucun ID d'exercice fourni");
-        return;
-      }
+      if (!id) return;
       if (typeof id === "string") {
         const res = await getBreathingExerciseById(id);
         setExercise(res);
-        console.log("Exercice chargé:", res);
-      } else {
-        console.error("Invalid ID format");
+
+        // Vérifie si c'est en favori
+        const favRes = await axios.get(
+          `${API_URL}/favorites/user/${user?.userId}`
+        );
+        const isFav = favRes.data.some((f: any) => f.exerciseId === id);
+        setIsFavorite(isFav);
       }
     } catch (err) {
       console.error("Erreur chargement exercice", err);
@@ -59,7 +62,6 @@ export default function ExerciseScreen() {
   useEffect(() => {
     loadExercise();
 
-    // Configurer l'audio mode
     const setupAudio = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -77,7 +79,6 @@ export default function ExerciseScreen() {
     setupAudio();
 
     return () => {
-      // Cleanup
       if (soundRef.current) {
         soundRef.current.unloadAsync();
       }
@@ -86,6 +87,31 @@ export default function ExerciseScreen() {
       }
     };
   }, []);
+
+  const toggleFavorite = async () => {
+    try {
+      if (isFavorite) {
+        // Supprimer
+        const res = await axios.get(
+          `${API_URL}/favorites/user/${user?.userId}`
+        );
+        const favorite = res.data.find((f: any) => f.exerciseId === id);
+        if (favorite) {
+          await axios.delete(`${API_URL}/favorites/${favorite.id}`);
+          setIsFavorite(false);
+        }
+      } else {
+        // Ajouter
+        await axios.post(`${API_URL}/favorites`, {
+          userId: user?.userId,
+          exerciseId: id,
+        });
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error("Erreur favoris", error);
+    }
+  };
 
   const startSession = async () => {
     const sessionDateTime = new Date().toISOString();
@@ -120,7 +146,6 @@ export default function ExerciseScreen() {
 
   const startTimer = () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-
     intervalRef.current = setInterval(() => {
       setTimer((prev) => prev + 1);
     }, 1000) as unknown as number;
@@ -140,14 +165,8 @@ export default function ExerciseScreen() {
     setIsLoading(true);
 
     try {
-      // Nettoyer l'URL pour s'assurer qu'elle est correctement formatée
       const audioUrl = `${API_URL}/${exercise.audioUrl.replace(/\\/g, "/")}`;
-      console.log("Chargement de l'audio:", audioUrl);
-
-      // Déchargez tout son précédent
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
+      if (soundRef.current) await soundRef.current.unloadAsync();
 
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
@@ -169,10 +188,7 @@ export default function ExerciseScreen() {
 
   const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus) => {
     if (status.isLoaded) {
-      // Mise à jour du statut de lecture
       setIsPlaying(status.isPlaying);
-
-      // Si la lecture est terminée
       if (status.didJustFinish) {
         stopTimer();
         updateSession();
@@ -188,7 +204,6 @@ export default function ExerciseScreen() {
 
     try {
       if (!sound) {
-        // Premier chargement du son
         const newSound = await loadSound();
         if (newSound) {
           await newSound.playAsync();
@@ -196,14 +211,8 @@ export default function ExerciseScreen() {
           setTimer(0);
           startTimer();
           startSession();
-
-          // Vibration légère au démarrage (optionnel)
-          if (typeof navigator !== "undefined" && navigator.vibrate) {
-            navigator.vibrate(100);
-          }
         }
       } else {
-        // Son déjà chargé
         if (isPlaying) {
           await sound.pauseAsync();
           stopTimer();
@@ -234,6 +243,14 @@ export default function ExerciseScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>{exercise.name}</Text>
+          <TouchableOpacity onPress={toggleFavorite}>
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={28}
+              color={isFavorite ? "#FF6B81" : "#256B5E"}
+              style={{ marginLeft: 10 }}
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
@@ -329,12 +346,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 24,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#256B5E",
-    textAlign: "center",
+    flex: 1,
   },
   card: {
     backgroundColor: "white",

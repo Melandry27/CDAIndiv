@@ -7,6 +7,7 @@ import adminRoutes from "./routes/admin.routes";
 import authRoutes from "./routes/auth.routes";
 import categoryRoutes from "./routes/category.routes";
 import exerciseRoutes from "./routes/exercise.routes";
+import favoriteRoutes from "./routes/favorite.routes";
 import historyRoutes from "./routes/history.routes";
 import sessionRoutes from "./routes/session.routes";
 import userRoutes from "./routes/user.routes";
@@ -27,5 +28,6 @@ app.use("/api/exercises", exerciseRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/histories", historyRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/favorites", favoriteRoutes);
 
 export default app;

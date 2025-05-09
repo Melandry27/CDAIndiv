@@ -1,4 +1,6 @@
+import { useAuth } from "@/context/AuthContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import {
   Modal,
   SafeAreaView,
@@ -7,8 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-import { useAuth } from "@/context/AuthContext";
 
 type Props = {
   visible: boolean;
@@ -22,6 +22,7 @@ export default function BurgerMenu({
   side = "right",
 }: Props) {
   const { logout } = useAuth();
+  const router = useRouter();
 
   return (
     <Modal animationType="slide" transparent visible={visible}>
@@ -35,20 +36,32 @@ export default function BurgerMenu({
         >
           <SafeAreaView>
             <Text style={styles.title}>Menu</Text>
+
             <MenuItem
               icon="home-outline"
               label="Accueil"
-              onPress={() => console.log("eee")}
+              onPress={() => {
+                router.replace("/");
+                onClose();
+              }}
+            />
+            <MenuItem
+              icon="heart-outline"
+              label="Favoris"
+              onPress={() => {
+                router.push("/favorites");
+                onClose();
+              }}
             />
             <MenuItem
               icon="account-outline"
               label="Mon profil"
-              onPress={() => console.log("eee")}
+              onPress={() => console.log("Profil")}
             />
             <MenuItem
               icon="cog-outline"
               label="Paramètres"
-              onPress={() => console.log("eee")}
+              onPress={() => console.log("Paramètres")}
             />
             <MenuItem
               icon="logout"

@@ -1,18 +1,10 @@
-import { API_URL } from "@/config";
 import { useAuth } from "@/context/AuthContext";
 import { getAllBreathingExercises } from "@/services/exercises";
 import { BreathingExercise } from "@/types/exercise";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  FlatList,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
+import FavoriteCard from "./FavoriteCard";
 
 export default function MainContent({
   selectedCategory,
@@ -53,49 +45,7 @@ export default function MainContent({
       <FlatList
         data={exercises}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: "/exercise/[id]",
-                params: { id: item.id },
-              })
-            }
-          >
-            <View style={styles.cardContentRow}>
-              <View style={styles.cardTextContent}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <Text style={styles.cardDesc} numberOfLines={2}>
-                  {item.description}
-                </Text>
-                <TouchableOpacity style={styles.watchButton}>
-                  <Text style={styles.watchButtonText}>regarder</Text>
-                  <MaterialCommunityIcons
-                    name="play-circle"
-                    color="white"
-                    size={18}
-                    style={{ marginLeft: 6 }}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {item.imageUrl && (
-                <Image
-                  source={{
-                    uri: `${API_URL}/${item.imageUrl
-                      .replace(/\\\\/g, "/")
-                      .replace(/\\/g, "/")}`,
-                  }}
-                  style={styles.cardImage}
-                  resizeMode="cover"
-                />
-              )}
-            </View>
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={{ paddingBottom: 60 }}
-        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => <FavoriteCard item={item} />}
       />
     </View>
   );

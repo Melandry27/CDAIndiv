@@ -33,6 +33,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="favorites"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="exercise/[id]"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
         name="login"
         options={{
           title: isConnected ? "Profil" : "Connexion",
