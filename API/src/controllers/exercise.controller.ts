@@ -9,8 +9,14 @@ export class BreathingExerciseController {
       const { name, description, duration, level, categoryIds, adminId } =
         req.body;
 
-      const audioFile = req.files && (req.files as any)["audio"]?.[0];
-      const imageFile = req.files && (req.files as any)["image"]?.[0];
+      const reqWithFiles = req as Request & {
+        files?: {
+          [fieldname: string]: Express.Multer.File[];
+        };
+      };
+
+      const audioFile = reqWithFiles.files?.["audio"]?.[0];
+      const imageFile = reqWithFiles.files?.["image"]?.[0];
 
       const breathingExercise =
         await breathingExerciseService.createBreathingExercise({
@@ -54,8 +60,14 @@ export class BreathingExerciseController {
 
       const { id } = req.params;
 
-      const audioFile = req.files && (req.files as any)["audio"]?.[0];
-      const imageFile = req.files && (req.files as any)["image"]?.[0];
+      const reqWithFiles = req as Request & {
+        files?: {
+          [fieldname: string]: Express.Multer.File[];
+        };
+      };
+
+      const audioFile = reqWithFiles.files?.["audio"]?.[0];
+      const imageFile = reqWithFiles.files?.["image"]?.[0];
 
       if (!audioFile && !imageFile) {
         return res.status(400).json({
