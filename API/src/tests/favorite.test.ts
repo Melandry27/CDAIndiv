@@ -1,3 +1,5 @@
+process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+
 import { PrismaClient } from "@prisma/client";
 import request from "supertest";
 import app from "../app";
@@ -8,6 +10,17 @@ describe("Favorite API", () => {
   let userId = "";
   let exerciseId = "";
   let favoriteId = "";
+
+  beforeEach(async () => {
+    await prisma.exerciseSession.deleteMany();
+    await prisma.favorite.deleteMany();
+    await prisma.history.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
 
   beforeAll(async () => {
     // Clean up the database and create a user and exercise for testing

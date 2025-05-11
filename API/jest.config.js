@@ -1,5 +1,7 @@
-export default {
+module.exports = {
   preset: "ts-jest",
   testEnvironment: "node",
-  // setupFilesAfterEnv: ["<rootDir>/src/tests/setup.ts"], ❌ retire cette ligne
+  setupFiles: ["<rootDir>/src/tests/setup-env.ts"],
+  globalSetup: "<rootDir>/src/tests/global-setup.js",
+  testMatch: ["**/tests/**/*.test.ts"],
 };

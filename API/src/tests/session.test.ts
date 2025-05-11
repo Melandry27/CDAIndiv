@@ -1,3 +1,5 @@
+process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+
 import { PrismaClient } from "@prisma/client";
 import request from "supertest";
 import app from "../app";
@@ -8,6 +10,17 @@ describe("ExerciseSession API", () => {
   let sessionId = "";
   let userId = "";
   let exerciseId = "";
+
+  beforeEach(async () => {
+    await prisma.exerciseSession.deleteMany();
+    await prisma.favorite.deleteMany();
+    await prisma.history.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
 
   beforeAll(async () => {
     // Nettoyer la base de données et créer un utilisateur et un exercice pour les tests

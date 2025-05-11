@@ -7,6 +7,17 @@ const prisma = new PrismaClient();
 describe("User API", () => {
   let userId: string;
 
+  beforeEach(async () => {
+    await prisma.exerciseSession.deleteMany();
+    await prisma.favorite.deleteMany();
+    await prisma.history.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
   const mockUser = {
     name: "Test User",
     email: "testuser@example.com",

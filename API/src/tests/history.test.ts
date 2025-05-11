@@ -1,3 +1,5 @@
+process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+
 import { PrismaClient } from "@prisma/client";
 import request from "supertest";
 import app from "../app";
@@ -7,6 +9,17 @@ const prisma = new PrismaClient();
 describe("History API", () => {
   let historyId = "";
   let userId = "";
+
+  beforeEach(async () => {
+    await prisma.exerciseSession.deleteMany();
+    await prisma.favorite.deleteMany();
+    await prisma.history.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
 
   beforeAll(async () => {
     // Nettoyer la base de données et créer un utilisateur pour les tests
