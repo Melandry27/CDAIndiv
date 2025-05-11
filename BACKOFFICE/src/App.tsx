@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/routing/ProtectedRoute";
 import AdminsPage from "./pages/Admins/AdminsPage";
 import CategoriesPage from "./pages/Category/CategoryPage";
 import ExercisesPage from "./pages/Exercises/ExercisesPage";
+import FavoritesPage from "./pages/Favorites/FavoritesPage";
 import HistoriesPage from "./pages/Histories/HistoriesPage";
 import Home from "./pages/Home";
 import LoginPage from "./pages/LoginPage";
@@ -29,6 +30,7 @@ export default function App() {
                   <Route path="/sessions" element={<SessionsPage />} />
                   <Route path="/histories" element={<HistoriesPage />} />
                   <Route path="/categories" element={<CategoriesPage />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
                 </Routes>
               </div>
             </div>

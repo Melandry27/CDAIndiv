@@ -25,28 +25,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<DecodedToken | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("auth_token");
-    if (stored) {
+    const storedToken = localStorage.getItem("auth_token");
+    console.log("Stored token:", storedToken);
+    if (storedToken) {
       try {
-        const decoded = jwtDecode<DecodedToken>(stored);
+        const decoded = jwtDecode<DecodedToken>(storedToken);
+        console.log("Decoded token:", decoded);
         if (decoded.exp * 1000 > Date.now()) {
-          setToken(stored);
+          setToken(storedToken);
           setUser(decoded);
         } else {
           localStorage.removeItem("auth_token");
         }
       } catch (err) {
-        console.error("Invalid token");
+        console.error("Token invalide:", err);
         localStorage.removeItem("auth_token");
       }
     }
   }, []);
 
   const login = (newToken: string) => {
-    localStorage.setItem("auth_token", newToken);
-    const decoded = jwtDecode<DecodedToken>(newToken);
-    setToken(newToken);
-    setUser(decoded);
+    try {
+      const decoded = jwtDecode<DecodedToken>(newToken);
+      localStorage.setItem("auth_token", newToken);
+      setToken(newToken);
+      setUser(decoded);
+    } catch (err) {
+      console.error("Erreur décodage token:", err);
+    }
   };
 
   const logout = () => {
@@ -56,7 +62,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        adminId: user?.adminId || null,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

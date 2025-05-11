@@ -1,7 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import { getAllBreathingExercises } from "@/services/exercises";
 import { BreathingExercise } from "@/types/exercise";
-import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import FavoriteCard from "./FavoriteCard";
@@ -12,7 +11,6 @@ export default function MainContent({
   selectedCategory: string | null;
 }) {
   const { user } = useAuth();
-  const router = useRouter();
 
   const [exercises, setExercises] = useState<BreathingExercise[]>([]);
 

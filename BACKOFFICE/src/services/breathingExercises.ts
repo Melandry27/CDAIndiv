@@ -5,8 +5,6 @@ const BASE_URL = "http://localhost:3000/api/exercises";
 export const getAllBreathingExercises = async () => {
   const res = await axios.get(BASE_URL);
 
-  console.log(res.data);
-
   return res.data;
 };
 

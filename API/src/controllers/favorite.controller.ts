@@ -9,6 +9,15 @@ export class FavoriteController {
     res.json(favorites);
   }
 
+  async getById(req: Request, res: Response) {
+    const { id } = req.params;
+    const favorite = await favoriteService.getFavoriteById(id);
+    if (!favorite) {
+      return res.status(404).json({ message: "Favorite not found" });
+    }
+    res.json(favorite);
+  }
+
   async getByUser(req: Request, res: Response) {
     const { userId } = req.params;
     const favorites = await favoriteService.getFavoritesByUser(userId);

@@ -7,6 +7,13 @@ export class FavoriteService {
     });
   }
 
+  async getFavoriteById(id: string) {
+    return prisma.favorite.findUnique({
+      where: { id },
+      include: { user: true, exercise: true },
+    });
+  }
+
   async getFavoritesByUser(userId: string) {
     return prisma.favorite.findMany({
       where: { userId },

@@ -4,7 +4,14 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
-import { Button, Text, TextInput } from "react-native-paper";
+import {
+  Button,
+  Modal,
+  Portal,
+  Provider,
+  Text,
+  TextInput,
+} from "react-native-paper";
 
 export default function Signup() {
   const router = useRouter();
@@ -15,7 +22,32 @@ export default function Signup() {
     confirmPassword: "",
     name: "",
   });
+
   const [loading, setLoading] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+
+  const rgpdMessage = `🔒 Protection des données personnelles
+
+En créant un compte sur CESIZen, vous consentez à la collecte et au traitement de vos données personnelles (nom, adresse email, données de sessions) à des fins de suivi de vos activités de bien-être et de personnalisation de votre expérience.
+
+👉 Ces données sont :
+- Strictement confidentielles
+- Conservées de manière sécurisée dans nos bases de données hébergées en Europe
+- Jamais transmises à des tiers sans votre consentement explicite
+
+⏳ Durée de conservation :
+Vos données sont conservées pendant la durée de votre utilisation du service, puis supprimées 12 mois après votre dernière activité.
+
+📝 Conformément au Règlement Général sur la Protection des Données (UE 2016/679), vous disposez à tout moment d’un droit :
+- d’accès à vos données
+- de rectification
+- de suppression
+- d’opposition
+
+Vous pouvez exercer ces droits en nous contactant à : support@cesizen.app
+
+✅ En cliquant sur « J’accepte », vous confirmez avoir lu et compris ces conditions.`;
 
   const handleSignup = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,6 +58,11 @@ export default function Signup() {
 
     if (form.password !== form.confirmPassword) {
       alert("Les mots de passe ne correspondent pas");
+      return;
+    }
+
+    if (!acceptedPolicy) {
+      setShowPolicyModal(true);
       return;
     }
 
@@ -53,102 +90,124 @@ export default function Signup() {
   };
 
   return (
-    <View style={styles.container}>
-      <BackHeader />
-      <Image
-        source={require("@/assets/images/CESIZEN.png")}
-        style={styles.logo}
-      />
+    <Provider>
+      <View style={styles.container}>
+        <BackHeader />
+        <Image
+          source={require("@/assets/images/CESIZEN.png")}
+          style={styles.logo}
+        />
 
-      <Text style={styles.subtitle}>
-        Créez votre compte pour commencer vos exercices de respiration.
-      </Text>
+        <Text style={styles.subtitle}>
+          Créez votre compte pour commencer vos exercices de respiration.
+        </Text>
 
-      <TextInput
-        label="Adresse email"
-        value={form.email}
-        textColor="#1F2128"
-        onChangeText={(text) => setForm({ ...form, email: text })}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={styles.input}
-        theme={{
-          colors: {
-            primary: "#256B5E",
-            placeholder: "#62745B",
-          },
-        }}
-      />
+        <TextInput
+          label="Adresse email"
+          value={form.email}
+          textColor="#1F2128"
+          onChangeText={(text) => setForm({ ...form, email: text })}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          style={styles.input}
+          theme={{ colors: { primary: "#256B5E", placeholder: "#62745B" } }}
+        />
 
-      <TextInput
-        label="Nom"
-        value={form.name}
-        textColor="#1F2128"
-        onChangeText={(text) => setForm({ ...form, name: text })}
-        autoCapitalize="none"
-        style={styles.input}
-        theme={{
-          colors: {
-            primary: "#256B5E",
-            placeholder: "#62745B",
-          },
-        }}
-      />
+        <TextInput
+          label="Nom"
+          value={form.name}
+          textColor="#1F2128"
+          onChangeText={(text) => setForm({ ...form, name: text })}
+          style={styles.input}
+          theme={{ colors: { primary: "#256B5E", placeholder: "#62745B" } }}
+        />
 
-      <TextInput
-        label="Mot de passe"
-        textColor="#1F2128"
-        value={form.password}
-        onChangeText={(text) => setForm({ ...form, password: text })}
-        secureTextEntry
-        style={styles.input}
-        theme={{
-          colors: {
-            primary: "#256B5E",
-            placeholder: "#62745B",
-          },
-        }}
-      />
+        <TextInput
+          label="Mot de passe"
+          value={form.password}
+          textColor="#1F2128"
+          onChangeText={(text) => setForm({ ...form, password: text })}
+          secureTextEntry
+          style={styles.input}
+          theme={{ colors: { primary: "#256B5E", placeholder: "#62745B" } }}
+        />
 
-      <TextInput
-        label="Confirmer le mot de passe"
-        textColor="#1F2128"
-        value={form.confirmPassword}
-        onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
-        secureTextEntry
-        style={styles.input}
-        theme={{
-          colors: {
-            primary: "#256B5E",
-            placeholder: "#62745B",
-          },
-        }}
-      />
+        <TextInput
+          label="Confirmer le mot de passe"
+          value={form.confirmPassword}
+          textColor="#1F2128"
+          onChangeText={(text) => setForm({ ...form, confirmPassword: text })}
+          secureTextEntry
+          style={styles.input}
+          theme={{ colors: { primary: "#256B5E", placeholder: "#62745B" } }}
+        />
 
-      <Button
-        mode="contained"
-        onPress={handleSignup}
-        loading={loading}
-        disabled={loading}
-        style={styles.button}
-        labelStyle={styles.buttonLabel}
-      >
-        S’inscrire
-      </Button>
+        <Button
+          mode="contained"
+          onPress={handleSignup}
+          loading={loading}
+          disabled={loading}
+          style={styles.button}
+          labelStyle={styles.buttonLabel}
+        >
+          S’inscrire
+        </Button>
 
-      <Button
-        onPress={() => router.replace("/login")}
-        style={(styles.secondaryButton, { zIndex: 50 })}
-        labelStyle={styles.secondaryButtonLabel}
-      >
-        Déjà un compte ? <Text style={styles.link}>Se connecter</Text>
-      </Button>
+        <Button
+          onPress={() => router.replace("/login")}
+          style={{ marginTop: 8 }}
+          labelStyle={styles.secondaryButtonLabel}
+        >
+          Déjà un compte ? <Text style={styles.link}>Se connecter</Text>
+        </Button>
 
-      <Image
-        source={require("@/assets/images/leaf-bg.png")}
-        style={styles.decor}
-      />
-    </View>
+        <Image
+          source={require("@/assets/images/leaf-bg.png")}
+          style={styles.decor}
+        />
+
+        <Portal>
+          <Modal
+            visible={showPolicyModal}
+            onDismiss={() => setShowPolicyModal(false)}
+            contentContainerStyle={{
+              backgroundColor: "white",
+              padding: 20,
+              margin: 20,
+              borderRadius: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontWeight: "bold",
+                fontSize: 18,
+                marginBottom: 10,
+                color: "#1F2128",
+              }}
+            >
+              Protection des données personnelles
+            </Text>
+            <Text style={{ marginBottom: 10, fontSize: 14, color: "#1F2128" }}>
+              {rgpdMessage}
+            </Text>
+            <Button
+              mode="contained"
+              onPress={() => {
+                setAcceptedPolicy(true);
+                setShowPolicyModal(false);
+                handleSignup();
+              }}
+              style={{
+                marginTop: 10,
+                backgroundColor: "#256B5E",
+              }}
+            >
+              J’accepte
+            </Button>
+          </Modal>
+        </Portal>
+      </View>
+    </Provider>
   );
 }
 
@@ -168,12 +227,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#256B5E",
   },
-  title: {
-    textAlign: "center",
-    fontWeight: "bold",
-    color: "#1F2128",
-    marginBottom: 8,
-  },
   subtitle: {
     textAlign: "center",
     color: "#62745B",
@@ -183,23 +236,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: "#E9F0E6",
   },
-  inputLabel: {
-    color: "#256B5E",
-  },
   button: {
     marginTop: 8,
     paddingVertical: 4,
     borderRadius: 6,
     backgroundColor: "#256B5E",
-    color: "#E9F0E6",
   },
   buttonLabel: {
     color: "#E9F0E6",
     fontWeight: "bold",
-  },
-  secondaryButton: {
-    marginTop: 8,
-    backgroundColor: "transparent",
   },
   secondaryButtonLabel: {
     color: "#256B5E",

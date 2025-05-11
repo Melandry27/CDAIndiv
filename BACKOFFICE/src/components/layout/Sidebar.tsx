@@ -12,6 +12,7 @@ export default function Sidebar() {
     { name: "Exercise Sessions", path: "/sessions" },
     { name: "Histories", path: "/histories" },
     { name: "Categories", path: "/categories" },
+    { name: "Favorites", path: "/favorites" },
   ];
 
   return (
