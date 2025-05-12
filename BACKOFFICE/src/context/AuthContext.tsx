@@ -26,11 +26,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const storedToken = localStorage.getItem("auth_token");
-    console.log("Stored token:", storedToken);
     if (storedToken) {
       try {
         const decoded = jwtDecode<DecodedToken>(storedToken);
-        console.log("Decoded token:", decoded);
         if (decoded.exp * 1000 > Date.now()) {
           setToken(storedToken);
           setUser(decoded);

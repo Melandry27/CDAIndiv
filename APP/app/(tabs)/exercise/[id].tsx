@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
   SafeAreaView,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -57,7 +58,7 @@ export default function ExerciseScreen() {
     }
   };
 
-  // Configuration audio et chargement initial
+  // Configuration audio
   useEffect(() => {
     const setupAudio = async () => {
       try {
@@ -76,7 +77,7 @@ export default function ExerciseScreen() {
     setupAudio();
   }, []);
 
-  // Chargement de l'exercice et gestion de nettoyage
+  // Chargement de l'exercice et nettoyage
   useEffect(() => {
     // Nettoyer l'état précédent
     const cleanup = async () => {
@@ -271,80 +272,87 @@ export default function ExerciseScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FBF4" />
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{exercise.name}</Text>
-          <TouchableOpacity onPress={toggleFavorite}>
-            <Ionicons
-              name={isFavorite ? "heart" : "heart-outline"}
-              size={28}
-              color={isFavorite ? "#FF6B81" : "#256B5E"}
-              style={{ marginLeft: 10 }}
-            />
-          </TouchableOpacity>
-        </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.title}>{exercise.name}</Text>
+            <TouchableOpacity onPress={toggleFavorite}>
+              <Ionicons
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={28}
+                color={isFavorite ? "#FF6B81" : "#256B5E"}
+                style={{ marginLeft: 10 }}
+              />
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.descTitle}>Description</Text>
-          <Text style={styles.desc}>{exercise.description}</Text>
-        </View>
+          <View style={styles.card}>
+            <Text style={styles.descTitle}>Description</Text>
+            <Text style={styles.desc}>{exercise.description}</Text>
+          </View>
 
-        <View style={styles.timerCard}>
-          <View style={styles.timerContainer}>
-            <Ionicons name="time-outline" size={24} color="#256B5E" />
-            <Text style={styles.timer}>
-              {`${Math.floor(timer / 60)
-                .toString()
-                .padStart(2, "0")}:${(timer % 60).toString().padStart(2, "0")}`}
+          <View style={styles.timerCard}>
+            <View style={styles.timerContainer}>
+              <Ionicons name="time-outline" size={24} color="#256B5E" />
+              <Text style={styles.timer}>
+                {`${Math.floor(timer / 60)
+                  .toString()
+                  .padStart(2, "0")}:${(timer % 60)
+                  .toString()
+                  .padStart(2, "0")}`}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.controlsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.playButton,
+                isLoading ? styles.buttonDisabled : null,
+              ]}
+              onPress={handlePlayPause}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name={
+                  isLoading ? "hourglass-outline" : isPlaying ? "pause" : "play"
+                }
+                size={32}
+                color="white"
+              />
+              <Text style={styles.buttonText}>
+                {isLoading
+                  ? "Chargement..."
+                  : isPlaying
+                  ? "Pause"
+                  : "Lancer l'exercice"}
+              </Text>
+            </TouchableOpacity>
+
+            {isPlaying && (
+              <View style={styles.breathAnimationContainer}>
+                <View
+                  style={[
+                    styles.breathCircle,
+                    isPlaying && styles.breathAnimation,
+                  ]}
+                />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.tipsCard}>
+            <Ionicons name="bulb-outline" size={20} color="#256B5E" />
+            <Text style={styles.tipsText}>
+              Installez-vous confortablement et dans un endroit calme pour
+              profiter pleinement de cet exercice.
             </Text>
           </View>
         </View>
-
-        <View style={styles.controlsContainer}>
-          <TouchableOpacity
-            style={[
-              styles.playButton,
-              isLoading ? styles.buttonDisabled : null,
-            ]}
-            onPress={handlePlayPause}
-            disabled={isLoading}
-          >
-            <Ionicons
-              name={
-                isLoading ? "hourglass-outline" : isPlaying ? "pause" : "play"
-              }
-              size={32}
-              color="white"
-            />
-            <Text style={styles.buttonText}>
-              {isLoading
-                ? "Chargement..."
-                : isPlaying
-                ? "Pause"
-                : "Lancer l'exercice"}
-            </Text>
-          </TouchableOpacity>
-
-          {isPlaying && (
-            <View style={styles.breathAnimationContainer}>
-              <View
-                style={[
-                  styles.breathCircle,
-                  isPlaying && styles.breathAnimation,
-                ]}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.tipsCard}>
-          <Ionicons name="bulb-outline" size={20} color="#256B5E" />
-          <Text style={styles.tipsText}>
-            Installez-vous confortablement et dans un endroit calme pour
-            profiter pleinement de cet exercice.
-          </Text>
-        </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -355,6 +363,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: "#F8FBF4",
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   container: {
     flex: 1,
