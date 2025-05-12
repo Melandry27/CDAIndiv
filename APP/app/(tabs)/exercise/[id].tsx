@@ -1,4 +1,3 @@
-// app/(tabs)/exercise/[id].tsx
 import { API_URL } from "@/config";
 import { useAuth } from "@/context/AuthContext";
 import { getBreathingExerciseById } from "@/services/exercises";
@@ -44,7 +43,6 @@ export default function ExerciseScreen() {
         const res = await getBreathingExerciseById(id);
         setExercise(res);
 
-        // Vérifie si c'est en favori
         const favRes = await axios.get(
           `${API_URL}/favorites/user/${user?.userId}`
         );
@@ -59,9 +57,8 @@ export default function ExerciseScreen() {
     }
   };
 
+  // Configuration audio et chargement initial
   useEffect(() => {
-    loadExercise();
-
     const setupAudio = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -77,16 +74,50 @@ export default function ExerciseScreen() {
     };
 
     setupAudio();
+  }, []);
 
-    return () => {
+  // Chargement de l'exercice et gestion de nettoyage
+  useEffect(() => {
+    // Nettoyer l'état précédent
+    const cleanup = async () => {
+      // Arrêter le son
       if (soundRef.current) {
-        soundRef.current.unloadAsync();
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
       }
+
+      setSound(null);
+      setIsPlaying(false);
+
+      // Arrêter le timer
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
+
+      // Mettre à jour la session si nécessaire
+      if (sessionId && startTime) {
+        await updateSession();
+      }
+
+      // Réinitialiser l'état
+      setTimer(0);
+      setStartTime(null);
+      setSessionId(null);
+      setExercise(null);
     };
-  }, []);
+
+    // Nettoyer avant de charger un nouvel exercice
+    cleanup().then(() => {
+      loadExercise();
+    });
+
+    // Nettoyage lors du démontage du composant
+    return () => {
+      cleanup();
+    };
+  }, [id, user?.userId]);
 
   const toggleFavorite = async () => {
     try {
