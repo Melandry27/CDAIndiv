@@ -1,0 +1,22 @@
+
+├── app
+├── app.json
+├── assets
+├── components
+├── config.ts
+├── constants
+├── context
+├── docs
+├── eslint.config.js
+├── expo-env.d.ts
+├── hooks
+├── node_modules
+├── null.txt
+├── package-lock.json
+├── package.json
+├── README.md
+├── scripts
+├── services
+└── tsconfig.json
+
+directory: 10 file: 9
