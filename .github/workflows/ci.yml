@@ -50,13 +50,6 @@ jobs:
           echo "Tests ran (failures ignored)"
         continue-on-error: true
 
-      - name: Upload Jest test results
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: jest-results
-          path: API/test-results/jest-junit.xml
-
   lint-backoffice:
     name: Lint Backoffice
     runs-on: ubuntu-latest
