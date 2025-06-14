@@ -26,7 +26,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://postgres:titeuf13@localhost:5432/cesizen_test?schema=public
+      DATABASE_URL_TEST: postgresql://postgres:titeuf13@localhost:5432/cesizen_test?schema=public
 
     defaults:
       run:
