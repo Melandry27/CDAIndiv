@@ -10,6 +10,23 @@ jobs:
   install-test-api:
     name: Install & Test API
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cesizen_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cesizen_test
 
     defaults:
       run:
@@ -21,10 +38,13 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Install dependencies (API)
+      - name: Install dependencies
         run: npm ci
 
-      - name: Run tests (API)
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run tests
         run: npm run test
 
   lint-backoffice:
