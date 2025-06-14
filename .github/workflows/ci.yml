@@ -65,7 +65,7 @@ jobs:
           node-version: "18"
 
       - name: Install dependencies (Backoffice)
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run linter (Backoffice)
         run: npm run lint
