@@ -1,0 +1,88 @@
+name: CI Pipeline CESIZen
+
+on:
+  push:
+    branches: [main, preprod]
+  pull_request:
+    branches: [main, preprod]
+
+jobs:
+  install-test-api:
+    name: Install & Test API
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: API
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (API)
+        run: npm ci
+
+      - name: Run tests (API)
+        run: npm run test
+
+  lint-backoffice:
+    name: Lint Backoffice
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: BACKOFFICE
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (Backoffice)
+        run: npm ci
+
+      - name: Run linter (Backoffice)
+        run: npm run lint
+
+  build-backoffice:
+    name: Build Backoffice
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: BACKOFFICE
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (Backoffice)
+        run: npm ci
+
+      - name: Build project (Backoffice)
+        run: npm run build
+
+  lint-mobile:
+    name: Lint Mobile App
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: APP
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (App)
+        run: npm ci
+
+      - name: Run Expo Lint
+        run: npm run lint || npx expo lint
