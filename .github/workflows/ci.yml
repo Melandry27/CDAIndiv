@@ -85,7 +85,7 @@ jobs:
           node-version: "18"
 
       - name: Install dependencies (Backoffice)
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build project (Backoffice)
         run: npm run build
