@@ -109,3 +109,29 @@ jobs:
 
       - name: Run Expo Lint
         run: npm run lint || npx expo lint
+
+  build-mobile:
+    name: Build Mobile App for Web
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: APP
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (Mobile)
+        run: npm ci
+
+      - name: Build Expo Web
+        run: npx expo export:web
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-web-build
+          path: APP/dist
