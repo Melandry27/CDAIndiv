@@ -24,8 +24,8 @@ jobs:
 
             echo "📂 Contenu de /home/ubuntu avant clonage :"
             ls -la /home/ubuntu
-            echo "📂 Contenu de avant clonage :"
-            ls -la
+
+            cd /home/ubuntu
 
             if [ ! -d "CDAIndiv/.git" ]; then
               echo "📥 Cloning repository into CDAIndiv..."
@@ -33,8 +33,7 @@ jobs:
               git clone https://github.com/melandry27/CDAIndiv.git CDAIndiv
             else
               echo "🔁 Pulling latest changes in CDAIndiv..."
-              cd CDAIndiv
-              git pull origin main
+              git -C CDAIndiv pull origin main
             fi
 
             cd CDAIndiv
