@@ -74,7 +74,7 @@ jobs:
 
             echo "🔄 Restarting apps with PM2..."
             pm2 stop all || true
-
+            pm2 delete all || true
             if [ -d "API" ]; then
               cd API
               pm2 start dist/server.js --name cesizen-api --env production || echo "❌ Impossible de lancer API avec PM2"
