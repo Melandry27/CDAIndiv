@@ -19,7 +19,7 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
             cd /home/ubuntu
 
@@ -43,10 +43,10 @@ jobs:
 
               echo "🔐 Injecting .env file for API..."
               cat <<EOT > .env
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-PORT=3000
-DATABASE_URL=${{ secrets.DATABASE_URL }}
-EOT
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          PORT=3000
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+
 
               npm install || echo "❌ npm install échoué pour API"
               npm run build || echo "❌ build échoué pour API"
