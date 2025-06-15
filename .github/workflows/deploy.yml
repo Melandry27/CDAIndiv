@@ -57,7 +57,7 @@ jobs:
             echo "📦 Installing dependencies and building BACKOFFICE..."
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
-              npm install || echo "❌ npm install échoué pour BACKOFFICE"
+              npm install --legacy-peer-deps || echo "❌ npm install échoué pour BACKOFFICE"
               npm run build || echo "❌ build échoué pour BACKOFFICE"
               cd ..
             else
