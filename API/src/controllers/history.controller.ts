@@ -14,7 +14,7 @@ export class HistoryController {
     res.json(histories);
   }
 
-  async getById(req: Request, res: Response) {
+  async getById(req: Request, res: Response): Promise<any> {
     const history = await historyService.getHistoryById(req.params.id);
     if (!history) return res.status(404).json({ message: "History not found" });
     res.json(history);

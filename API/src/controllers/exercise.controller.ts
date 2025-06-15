@@ -46,7 +46,7 @@ export class BreathingExerciseController {
     res.json(breathingExercises);
   }
 
-  async getById(req: Request, res: Response) {
+  async getById(req: Request, res: Response): Promise<any> {
     const breathingExercise =
       await breathingExerciseService.getBreathingExerciseById(req.params.id);
     if (!breathingExercise)
@@ -54,7 +54,7 @@ export class BreathingExerciseController {
     res.json(breathingExercise);
   }
 
-  async update(req: Request, res: Response) {
+  async update(req: Request, res: Response): Promise<any> {
     try {
       const { name, description, duration, level, categoryIds } = req.body;
 

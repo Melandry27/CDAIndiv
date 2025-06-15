@@ -3,7 +3,11 @@ import jwt from "jsonwebtoken";
 import prisma from "../prisma/client";
 import { UserCreateInput } from "../types/User";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET as string;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET environment variable is not defined");
+}
 
 export class AuthService {
   async signup(data: UserCreateInput) {
@@ -42,7 +46,6 @@ export class AuthService {
         userId: user.id,
         email: user.email,
         name: user.name,
-        dateOfBirth: user.dateOfBirth,
         phoneNumber: user.phoneNumber,
         address: user.address,
       },

@@ -17,7 +17,7 @@ export class ExerciseSessionController {
     res.json(exerciseSessions);
   }
 
-  async getById(req: Request, res: Response) {
+  async getById(req: Request, res: Response): Promise<any> {
     const exerciseSession = await exerciseSessionService.getExerciseSessionById(
       req.params.id
     );

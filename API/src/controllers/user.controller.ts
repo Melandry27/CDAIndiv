@@ -14,7 +14,7 @@ export class UserController {
     res.json(users);
   }
 
-  async getById(req: Request, res: Response) {
+  async getById(req: Request, res: Response): Promise<any> {
     const user = await userService.getUserById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);

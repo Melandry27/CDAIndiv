@@ -14,7 +14,7 @@ export class AdminController {
     res.json(admins);
   }
 
-  async getById(req: Request, res: Response) {
+  async getById(req: Request, res: Response): Promise<any> {
     const admin = await adminService.getAdminById(req.params.id);
     if (!admin) return res.status(404).json({ message: "Admin not found" });
     res.json(admin);

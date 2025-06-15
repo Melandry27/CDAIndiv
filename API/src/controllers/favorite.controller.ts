@@ -9,7 +9,7 @@ export class FavoriteController {
     res.json(favorites);
   }
 
-  async getById(req: Request, res: Response) {
+  async getById(req: Request, res: Response): Promise<any> {
     const { id } = req.params;
     const favorite = await favoriteService.getFavoriteById(id);
     if (!favorite) {
