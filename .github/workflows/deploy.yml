@@ -26,20 +26,20 @@ jobs:
             git pull origin main
 
             echo "📦 Installing dependencies..."
-            cd API && npm install && cd ..
+            cd API && npm install && npm run build && cd ..
             cd BACKOFFICE && npm install && npm run build && cd ..
 
             echo "🚀 Restarting apps with PM2..."
             pm2 stop all || true
 
-            # API
+            # API - assume le build génère dist/server.js ou équivalent
             cd API
-            pm2 start npm --name cesizen-api -- run start
+            pm2 start dist/server.js --name cesizen-api
             cd ..
 
-            # Backoffice (serveur statique avec vite preview)
+            # BACKOFFICE - lance vite preview directement avec npx
             cd BACKOFFICE
-            pm2 start npm --name cesizen-back -- run preview
+            pm2 start npx --name cesizen-back -- vite preview
             cd ..
 
             echo "✅ Deploy complete"
