@@ -20,24 +20,36 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ${{ secrets.EC2_PATH }}
+            set -e
 
-            echo "🔁 Pulling latest code..."
-            git pull origin main
+            cd /home/ubuntu
+
+            if [ ! -d "CDAIndiv/.git" ]; then
+              echo "📥 Cloning repository into CDAIndiv..."
+              rm -rf CDAIndiv
+              git clone https://github.com/melandry27/CDAIndiv.git CDAIndiv
+            else
+              echo "🔁 Pulling latest changes in CDAIndiv..."
+              cd CDAIndiv
+              git pull origin main
+            fi
+
+            cd CDAIndiv
 
             echo "📦 Installing dependencies..."
             cd API && npm install && npm run build && cd ..
             cd BACKOFFICE && npm install && npm run build && cd ..
 
-            echo "🚀 Restarting apps with PM2..."
+            echo "🚀 Ensuring PM2 is available..."
+            command -v pm2 >/dev/null 2>&1 || npm install -g pm2
+
+            echo "🔄 Restarting apps with PM2..."
             pm2 stop all || true
 
-            # API - assume le build génère dist/server.js ou équivalent
             cd API
             pm2 start dist/server.js --name cesizen-api
             cd ..
 
-            # BACKOFFICE - lance vite preview directement avec npx
             cd BACKOFFICE
             pm2 start npx --name cesizen-back -- vite preview
             cd ..
