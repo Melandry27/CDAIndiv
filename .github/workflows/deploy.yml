@@ -22,6 +22,11 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
+            echo "📂 Contenu de /home/ubuntu avant clonage :"
+            ls -la /home/ubuntu
+            echo "📂 Contenu de avant clonage :"
+            ls -la
+
             if [ ! -d "CDAIndiv/.git" ]; then
               echo "📥 Cloning repository into CDAIndiv..."
               rm -rf CDAIndiv
