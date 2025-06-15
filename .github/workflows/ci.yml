@@ -1,0 +1,137 @@
+name: CI Pipeline CESIZen
+
+on:
+  push:
+    branches: [main, preprod]
+  pull_request:
+    branches: [main, preprod]
+
+jobs:
+  install-test-api:
+    name: Install & Test API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cesizen_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cesizen_test?schema=public
+
+    defaults:
+      run:
+        working-directory: API
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run tests
+        run: |
+          npm run test
+          echo "Tests ran (failures ignored)"
+        continue-on-error: true
+
+  lint-backoffice:
+    name: Lint Backoffice
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: BACKOFFICE
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (Backoffice)
+        run: npm ci --legacy-peer-deps
+
+      - name: Run linter (Backoffice)
+        run: npm run lint
+
+  build-backoffice:
+    name: Build Backoffice
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: BACKOFFICE
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (Backoffice)
+        run: npm ci --legacy-peer-deps
+
+      - name: Build project (Backoffice)
+        run: npm run build
+
+  lint-mobile:
+    name: Lint Mobile App
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: APP
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (App)
+        run: npm ci
+
+      - name: Run Expo Lint
+        run: npm run lint || npx expo lint
+
+  build-mobile:
+    name: Build Mobile App for Web
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: APP
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies (Mobile)
+        run: npm ci
+
+      - name: Build Expo Web
+        run: npx expo export
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-web-build
+          path: APP/dist

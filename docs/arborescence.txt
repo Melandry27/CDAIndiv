@@ -1,0 +1,76 @@
+
+├── API
+├── APP
+├── BACKOFFICE
+├── docs
+└── readme.md
+
+directory: 4 file: 1
+
+=====
+ APP
+=====
+
+├── docs
+├── jest.config.js
+├── node_modules
+├── package-lock.json
+├── package.json
+├── prisma
+├── src
+└── tsconfig.json
+
+directory: 4 file: 4
+
+=====
+ API
+=====
+
+├── app
+├── app.json
+├── assets
+├── components
+├── config.ts
+├── constants
+├── context
+├── docs
+├── eslint.config.js
+├── expo-env.d.ts
+├── hooks
+├── node_modules
+├── null.txt
+├── package-lock.json
+├── package.json
+├── README.md
+├── scripts
+├── services
+└── tsconfig.json
+
+directory: 10 file: 9
+
+==========
+BACKOFFICE
+==========
+
+├── components.json
+├── docs
+├── eslint.config.js
+├── index.html
+├── node_modules
+├── package-lock.json
+├── package.json
+├── public
+├── README.md
+├── src
+├── tsconfig.app.json
+├── tsconfig.json
+├── tsconfig.node.json
+└── vite.config.ts
+
+directory: 4 file: 10
+
+
+
+
+
+
