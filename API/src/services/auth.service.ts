@@ -4,9 +4,6 @@ import prisma from "../prisma/client";
 import { UserCreateInput } from "../types/User";
 
 const jwtSecret = process.env.JWT_SECRET;
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET environment variable is not defined");
-}
 
 export class AuthService {
   async signup(data: UserCreateInput) {
@@ -48,7 +45,7 @@ export class AuthService {
         phoneNumber: user.phoneNumber,
         address: user.address,
       },
-      jwtSecret || "defaultSecretKey",
+      jwtSecret || "your_jwt_secret",
       {
         expiresIn: "1d",
       }
@@ -85,7 +82,7 @@ export class AuthService {
 
     const token = jwt.sign(
       { adminId: admin.id, email: admin.email },
-      jwtSecret || "defaultSecretKey",
+      jwtSecret || "your_jwt_secret",
       {
         expiresIn: "1d",
       }
