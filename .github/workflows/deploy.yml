@@ -22,8 +22,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo "📂 Contenu de /home/ubuntu avant clonage :"
-            ls -la /home/ubuntu
+            # 💤 Empêche la coupure SSH
+            while true; do echo "💤 Keep Alive..."; sleep 30; done &
 
             cd /home/ubuntu
 
@@ -38,9 +38,6 @@ jobs:
 
             cd CDAIndiv
 
-            echo "📁 Contenu de CDAIndiv :"
-            ls -la
-
             echo "🔧 Installing Node.js and npm if not present..."
             command -v npm >/dev/null 2>&1 || curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs
 
@@ -48,7 +45,7 @@ jobs:
             if [ -d "API" ]; then
               cd API
               npm install || echo "❌ npm install échoué pour API"
-              npm run build || echo "❌ build échoué pour API (vérifie target dans tsconfig.json)"
+              npm run build || echo "❌ build échoué pour API"
               cd ..
             else
               echo "❌ Dossier API introuvable"
@@ -57,8 +54,12 @@ jobs:
             echo "📦 Installing dependencies and building BACKOFFICE..."
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
+
+              # Ajoute un fichier .env si besoin (ajuste l’URL)
+              echo "VITE_API_URL=http://34.224.12.85:3000/api" > .env
+
               npm install --legacy-peer-deps || echo "❌ npm install échoué pour BACKOFFICE"
-              npm run build || echo "❌ build échoué pour BACKOFFICE"
+              npm run build --silent || echo "❌ build échoué pour BACKOFFICE"
               cd ..
             else
               echo "❌ Dossier BACKOFFICE introuvable"
@@ -78,8 +79,7 @@ jobs:
 
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
-              pm2 delete cesizen-back || true
-              pm2 start npx --name cesizen-back -- vite preview --port 4173 --host 0.0.0.0 || echo "❌ Impossible de lancer BACKOFFICE avec PM2"
+              pm2 start npx --name cesizen-back -- vite preview --port 4173 --host || echo "❌ Impossible de lancer BACKOFFICE avec PM2"
               cd ..
             fi
 
