@@ -21,7 +21,6 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-
             cd /home/ubuntu
 
             if [ ! -d "CDAIndiv/.git" ]; then
@@ -41,6 +40,14 @@ jobs:
             echo "📦 Installing dependencies and building API..."
             if [ -d "API" ]; then
               cd API
+
+              echo "🔐 Injecting .env file for API..."
+              cat <<EOT > .env
+              JWT_SECRET=${{ secrets.JWT_SECRET }}
+              PORT=3000
+              DATABASE_URL=${{ secrets.DATABASE_URL }}
+            EOT
+
               npm install || echo "❌ npm install échoué pour API"
               npm run build || echo "❌ build échoué pour API"
               cd ..
@@ -52,7 +59,7 @@ jobs:
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
 
-              # Ajoute un fichier .env si besoin (ajuste l’URL)
+              echo "🌍 Injecting .env file for BACKOFFICE..."
               echo "VITE_API_URL=http://34.224.12.85:3000/api" > .env
 
               npm install --legacy-peer-deps || echo "❌ npm install échoué pour BACKOFFICE"
