@@ -38,6 +38,9 @@ jobs:
 
             cd CDAIndiv
 
+            echo "📁 Contenu de CDAIndiv :"
+            ls -la
+
             echo "🔧 Installing Node.js and npm if not present..."
             command -v npm >/dev/null 2>&1 || curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs
 
