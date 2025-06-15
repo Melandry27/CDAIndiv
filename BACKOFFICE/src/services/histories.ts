@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:3000/api/histories";
+const BASE_URL = `${import.meta.env.VITE_API_URL}/histories`;
 
 export const getAllHistories = async () => {
   const res = await axios.get(BASE_URL);

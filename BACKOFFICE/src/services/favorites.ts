@@ -1,4 +1,5 @@
-const BASE_URL = "http://localhost:3000/api/favorites";
+const BASE_URL = `${import.meta.env.VITE_API_URL}/favorites`;
+
 import axios from "axios";
 
 export const getFavorites = async () => {
