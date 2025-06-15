@@ -1,4 +1,14 @@
-node_modules
-# Keep environment variables out of version control
+# Ignore node_modules and build output
+node_modules/
+dist/
+
+# Ignore TypeScript outputs (just in case)
+*.js
+*.js.map
+
+# Ignore environment and logs
 .env
+npm-debug.log*
 /uploads
+
+
