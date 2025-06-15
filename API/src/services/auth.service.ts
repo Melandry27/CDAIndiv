@@ -3,9 +3,8 @@ import jwt from "jsonwebtoken";
 import prisma from "../prisma/client";
 import { UserCreateInput } from "../types/User";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-
-if (!JWT_SECRET) {
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) {
   throw new Error("JWT_SECRET environment variable is not defined");
 }
 
@@ -49,7 +48,7 @@ export class AuthService {
         phoneNumber: user.phoneNumber,
         address: user.address,
       },
-      JWT_SECRET,
+      jwtSecret || "defaultSecretKey",
       {
         expiresIn: "1d",
       }
@@ -86,7 +85,7 @@ export class AuthService {
 
     const token = jwt.sign(
       { adminId: admin.id, email: admin.email },
-      JWT_SECRET,
+      jwtSecret || "defaultSecretKey",
       {
         expiresIn: "1d",
       }
