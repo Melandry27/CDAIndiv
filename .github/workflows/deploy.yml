@@ -43,10 +43,10 @@ jobs:
 
               echo "🔐 Injecting .env file for API..."
               cat <<EOT > .env
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          PORT=3000
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          EOT
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            PORT=3000
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            EOT
 
               npm install || echo "❌ npm install échoué pour API"
               npm run build || echo "❌ build échoué pour API"
@@ -60,7 +60,9 @@ jobs:
               cd BACKOFFICE
 
               echo "🌍 Injecting .env file for BACKOFFICE..."
-              echo "VITE_API_URL=http://34.224.12.85:3000/api" > .env
+              cat <<EOT > .env
+            VITE_API_URL=http://34.224.12.85:3000/api
+            EOT
 
               npm install --legacy-peer-deps || echo "❌ npm install échoué pour BACKOFFICE"
               npm run build --silent || echo "❌ build échoué pour BACKOFFICE"
