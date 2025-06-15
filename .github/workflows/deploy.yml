@@ -78,7 +78,8 @@ jobs:
 
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
-              pm2 start npx --name cesizen-back -- vite preview || echo "❌ Impossible de lancer BACKOFFICE avec PM2"
+              pm2 delete cesizen-back || true
+              pm2 start npx --name cesizen-back -- vite preview --port 4173 --host 0.0.0.0 || echo "❌ Impossible de lancer BACKOFFICE avec PM2"
               cd ..
             fi
 
