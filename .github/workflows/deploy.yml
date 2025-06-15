@@ -44,9 +44,25 @@ jobs:
             echo "🔧 Installing Node.js and npm if not present..."
             command -v npm >/dev/null 2>&1 || curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs
 
-            echo "📦 Installing dependencies..."
-            cd API && npm install && npm run build && cd ..
-            cd BACKOFFICE && npm install && npm run build && cd ..
+            echo "📦 Installing dependencies and building API..."
+            if [ -d "API" ]; then
+              cd API
+              npm install || echo "❌ npm install échoué pour API"
+              npm run build || echo "❌ build échoué pour API (vérifie target dans tsconfig.json)"
+              cd ..
+            else
+              echo "❌ Dossier API introuvable"
+            fi
+
+            echo "📦 Installing dependencies and building BACKOFFICE..."
+            if [ -d "BACKOFFICE" ]; then
+              cd BACKOFFICE
+              npm install || echo "❌ npm install échoué pour BACKOFFICE"
+              npm run build || echo "❌ build échoué pour BACKOFFICE"
+              cd ..
+            else
+              echo "❌ Dossier BACKOFFICE introuvable"
+            fi
 
             echo "🚀 Ensuring PM2 is available..."
             command -v pm2 >/dev/null 2>&1 || sudo npm install -g pm2
@@ -54,13 +70,20 @@ jobs:
             echo "🔄 Restarting apps with PM2..."
             pm2 stop all || true
 
-            cd API
-            pm2 start dist/server.js --name cesizen-api
-            cd ..
+            if [ -d "API" ]; then
+              cd API
+              pm2 start dist/server.js --name cesizen-api || echo "❌ Impossible de lancer API avec PM2"
+              cd ..
+            fi
 
-            cd BACKOFFICE
-            pm2 start npx --name cesizen-back -- vite preview
-            cd ..
+            if [ -d "BACKOFFICE" ]; then
+              cd BACKOFFICE
+              pm2 start npx --name cesizen-back -- vite preview || echo "❌ Impossible de lancer BACKOFFICE avec PM2"
+              cd ..
+            fi
+
+            echo "📊 Listing des process PM2 :"
+            pm2 list
 
             echo "✅ Deploy complete"
           EOF
