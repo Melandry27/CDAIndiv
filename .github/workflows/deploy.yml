@@ -85,6 +85,45 @@ jobs:
             npm run build --silent
           EOF
 
+  build-and-deploy-mobile-web:
+    needs: install-and-build-backoffice
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Build and deploy Expo Web on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+            set -e
+            cd /home/ubuntu/CDAIndiv
+
+            if [ -d "MOBILE" ]; then
+              cd MOBILE
+
+              echo "🌐 Installing Expo Web dependencies..."
+              npx expo install react-dom react-native-web @expo/webpack-config -- --legacy-peer-deps
+
+              echo "🌍 Injecting .env file"
+              cat <<EOT > .env
+          EXPO_PUBLIC_API_URL=http://34.224.12.85:3000/api
+          EOT
+
+              echo "🌐 Building Expo Web..."
+              npx expo export --platform web --output-dir dist || echo "❌ Expo Web export failed"
+
+              echo "🚀 Deploying Expo Web with PM2"
+              command -v pm2 >/dev/null 2>&1 || sudo npm install -g pm2
+              pm2 delete cesizen-mobile-web || true
+              pm2 serve dist 8080 --name cesizen-mobile-web
+              cd ..
+            else
+              echo "❌ Dossier MOBILE introuvable"
+            fi
+          EOF
+
   deploy-and-restart-pm2:
     needs: install-and-build-backoffice
     runs-on: ubuntu-latest
