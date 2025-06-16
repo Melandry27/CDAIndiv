@@ -5,19 +5,22 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  checkout:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+  install-and-build-api:
+    needs: checkout
+    runs-on: ubuntu-latest
+    steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Deploy to EC2
+      - name: Build and prepare API on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
@@ -32,75 +35,91 @@ jobs:
               git -C CDAIndiv pull origin main
             fi
 
-            cd CDAIndiv
+            cd CDAIndiv/API
 
-            echo "🔧 Installing Node.js and npm if not present..."
-            command -v npm >/dev/null 2>&1 || curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash - && sudo apt-get install -y nodejs
-
-            echo "📦 Installing dependencies and building API..."
-            if [ -d "API" ]; then
-              cd API
-
-              echo "🔐 Injecting .env file for API..."
-              cat <<EOT > .env
+            echo "🔐 Injecting .env file"
+            cat <<EOT > .env
           JWT_SECRET=${{ secrets.JWT_SECRET }}
           PORT=3000
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           EOT
 
-              npm install || echo "❌ npm install échoué pour API"
-              npm run build || echo "❌ build échoué pour API"
-              cd ..
+            echo "📦 Installing API dependencies..."
+            npm install
+            echo "🏗️ Building API..."
+            npm run build
+
+            echo "🧪 Checking DB state..."
+            MIGRATION_COUNT=\$(npx prisma migrate status --schema ./prisma/schema.prisma --json | grep -o '"appliedMigrations":\[[^]]*\]' | grep -o '[^,]\+' | wc -l)
+            if [ "\$MIGRATION_COUNT" -le 2 ]; then
+              echo "🛠️ Initializing DB..."
+              npx prisma migrate deploy
             else
-              echo "❌ Dossier API introuvable"
+              echo "✅ DB already initialized"
             fi
+          EOF
 
-            echo "🧪 Vérification de l'état de la base de données..."
+  install-and-build-backoffice:
+    needs: install-and-build-api
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-            MIGRATION_COUNT=$(npx prisma migrate status --schema ./prisma/schema.prisma --json | grep -o '"appliedMigrations":\[[^]]*\]' | grep -o '[^,]\+' | wc -l)
+      - name: Build Backoffice on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+            set -e
+            cd /home/ubuntu/CDAIndiv/BACKOFFICE
 
-            if [ "$MIGRATION_COUNT" -le 2 ]; then
-              echo "🛠️ Aucune migration trouvée, initialisation de la base..."
-              npx prisma migrate deploy || echo "❌ Échec de l'initialisation de la base"
-            else
-              echo "✅ La base de données est déjà initialisée. Skip."
-            fi
-
-            echo "📦 Installing dependencies and building BACKOFFICE..."
-            if [ -d "BACKOFFICE" ]; then
-              cd BACKOFFICE
-
-              echo "🌍 Injecting .env file for BACKOFFICE..."
-              cat <<EOT > .env
+            echo "🌍 Injecting .env file"
+            cat <<EOT > .env
           VITE_API_URL=http://34.224.12.85:3000/api
           EOT
 
-              npm install --legacy-peer-deps || echo "❌ npm install échoué pour BACKOFFICE"
-              npm run build --silent || echo "❌ build échoué pour BACKOFFICE"
-              cd ..
-            else
-              echo "❌ Dossier BACKOFFICE introuvable"
-            fi
+            echo "📦 Installing backoffice dependencies..."
+            npm install --legacy-peer-deps
+            echo "🏗️ Building backoffice..."
+            npm run build --silent
+          EOF
+
+  deploy-and-restart-pm2:
+    needs: install-and-build-backoffice
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Restart PM2 and launch apps
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+            set -e
+            cd /home/ubuntu/CDAIndiv
 
             echo "🚀 Ensuring PM2 is available..."
             command -v pm2 >/dev/null 2>&1 || sudo npm install -g pm2
 
-            echo "🔄 Restarting apps with PM2..."
+            echo "🔄 Restarting all PM2 apps..."
             pm2 stop all || true
             pm2 delete all || true
+
             if [ -d "API" ]; then
               cd API
-              pm2 start dist/server.js --name cesizen-api --env production || echo "❌ Impossible de lancer API avec PM2"
+              pm2 start dist/server.js --name cesizen-api --env production
               cd ..
             fi
 
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
-              pm2 start npx --name cesizen-back -- vite preview --port 4173 --host || echo "❌ Impossible de lancer BACKOFFICE avec PM2"
+              pm2 start npx --name cesizen-back -- vite preview --port 4173 --host
               cd ..
             fi
 
-            echo "📊 Listing des process PM2 :"
+            echo "📊 Listing PM2 processes:"
             pm2 list
 
             echo "✅ Deploy complete"
