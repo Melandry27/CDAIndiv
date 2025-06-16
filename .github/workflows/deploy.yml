@@ -103,12 +103,15 @@ jobs:
             if [ -d "APP" ]; then
               cd APP
 
+              echo "📦 Ensuring expo is installed..."
+              npm install expo || echo "❌ Échec installation expo"
+
               echo "🌐 Installing Expo Web dependencies..."
               npx expo install react-dom react-native-web @expo/webpack-config -- --legacy-peer-deps
 
               echo "🌍 Injecting .env file"
-              cat <<EOT > .env
-          EXPO_PUBLIC_API_URL=http://34.224.12.85:3000/api
+              cat <<EOT > config.ts
+          export const API_URL = "http://34.224.12.85:3000/api";
           EOT
 
               echo "🌐 Building Expo Web..."
