@@ -55,6 +55,17 @@ jobs:
               echo "❌ Dossier API introuvable"
             fi
 
+            echo "🧪 Vérification de l'état de la base de données..."
+
+            MIGRATION_COUNT=$(npx prisma migrate status --schema ./prisma/schema.prisma --json | grep -o '"appliedMigrations":\[[^]]*\]' | grep -o '[^,]\+' | wc -l)
+
+            if [ "$MIGRATION_COUNT" -le 2 ]; then
+              echo "🛠️ Aucune migration trouvée, initialisation de la base..."
+              npx prisma migrate deploy || echo "❌ Échec de l'initialisation de la base"
+            else
+              echo "✅ La base de données est déjà initialisée. Skip."
+            fi
+
             echo "📦 Installing dependencies and building BACKOFFICE..."
             if [ -d "BACKOFFICE" ]; then
               cd BACKOFFICE
