@@ -125,7 +125,7 @@ jobs:
           EOF
 
   deploy-and-restart-pm2:
-    needs: install-and-build-backoffice
+    needs: build-and-deploy-mobile-web
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
