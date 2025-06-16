@@ -100,8 +100,8 @@ jobs:
             set -e
             cd /home/ubuntu/CDAIndiv
 
-            if [ -d "MOBILE" ]; then
-              cd MOBILE
+            if [ -d "APP" ]; then
+              cd APP
 
               echo "🌐 Installing Expo Web dependencies..."
               npx expo install react-dom react-native-web @expo/webpack-config -- --legacy-peer-deps
