@@ -119,8 +119,6 @@ jobs:
 
               echo "🚀 Deploying Expo Web with PM2"
               command -v pm2 >/dev/null 2>&1 || sudo npm install -g pm2
-              pm2 delete cesizen-mobile-web || true
-              pm2 serve dist 8080 --name cesizen-mobile-web
               cd ..
             else
               echo "❌ Dossier MOBILE introuvable"
@@ -163,7 +161,7 @@ jobs:
 
             if [ -d "APP" ]; then
               cd APP
-              pm2 start npx --name cesizen-mobile-web expo start --web
+              pm2 serve dist 8080 --name cesizen-mobile-web
               cd ..
             fi
 
