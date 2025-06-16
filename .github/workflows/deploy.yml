@@ -161,7 +161,7 @@ jobs:
 
             if [ -d "APP" ]; then
               cd APP
-              pm2 serve dist 8080 --name cesizen-mobile-web
+              pm2 serve /home/ubuntu/CDAIndiv/APP/dist 8080 --name cesizen-mobile-web
               cd ..
             fi
 
