@@ -161,6 +161,12 @@ jobs:
               cd ..
             fi
 
+            if [ -d "APP" ]; then
+              cd APP
+              pm2 start npx --name cesizen-mobile-web expo start --web
+              cd ..
+            fi
+
             echo "📊 Listing PM2 processes:"
             pm2 list
 
