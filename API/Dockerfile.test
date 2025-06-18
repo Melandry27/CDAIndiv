@@ -8,4 +8,4 @@ RUN npm install
 RUN npx prisma generate
 RUN npx prisma migrate deploy
 
-CMD ["npx", "prisma", "migrate", "deploy", "&&", "npm", "run", "test"]
+CMD sh -c "npx prisma migrate deploy && npm run test"
