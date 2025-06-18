@@ -1,0 +1,128 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Deploy Postgres DB on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "📦 Creating Docker volume for Postgres (if not exists)..."
+            docker volume create cesizen-db-data || true
+
+            echo "🧱 Stopping existing Postgres..."
+            docker stop cesizen-postgres || true
+            docker rm cesizen-postgres || true
+
+            echo "🐘 Starting Postgres container..."
+            docker run -d \
+              --name cesizen-postgres \
+              -e POSTGRES_USER=postgres \
+              -e POSTGRES_PASSWORD=postgres \
+              -e POSTGRES_DB=cesizen \
+              -v cesizen-db-data:/var/lib/postgresql/data \
+              -p 5432:5432 \
+              postgres:15
+
+            echo "🕐 Waiting for Postgres to be ready..."
+            sleep 10
+          EOF
+
+  deploy-api:
+    needs: deploy-db
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Deploy API on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "📦 Pulling Docker image for API..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+
+            echo "🛠 Running Prisma Migrate..."
+            docker run --rm \
+              --network host \
+              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest \
+              npx prisma migrate deploy
+
+            echo "🚀 Starting API container..."
+            docker stop cesizen-api || true && docker rm cesizen-api || true
+            docker run -d \
+              --name cesizen-api \
+              --network host \
+              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+          EOF
+
+  deploy-backoffice:
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Deploy Backoffice on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "📦 Pulling Backoffice image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
+
+            echo "🚀 Starting Backoffice container..."
+            docker stop cesizen-back || true && docker rm cesizen-back || true
+            docker run -d \
+              --name cesizen-back \
+              -p 4173:4173 \
+              -e VITE_API_URL=http://localhost:3000/api \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
+          EOF
+
+  deploy-app:
+    needs: deploy-backoffice
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Deploy Expo Web App on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "📦 Pulling App image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
+
+            echo "🚀 Starting App container..."
+            docker stop cesizen-app || true && docker rm cesizen-app || true
+            docker run -d \
+              --name cesizen-app \
+              -p 8080:8080 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
+
+            echo "✅ Deployment complete"
+          EOF
