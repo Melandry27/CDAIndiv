@@ -74,7 +74,7 @@ jobs:
 
       - name: Lint mobile app in Docker
         run: |
-          docker run --rm -v ${{ github.workspace }}/APP:/app node:18 bash -c "cd /app && npm install && npm run lint || npx expo lint"
+          docker run --rm -v ${{ github.workspace }}/APP:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run lint || npx expo lint"
 
   build-app:
     runs-on: ubuntu-latest
