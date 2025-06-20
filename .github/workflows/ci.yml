@@ -2,9 +2,9 @@ name: CI Pipeline CESIZen
 
 on:
   push:
-    branches: [main, preprod]
+    branches: [main, test]
   pull_request:
-    branches: [main, preprod]
+    branches: [main, test]
 
 jobs:
   setup:

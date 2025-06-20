@@ -1,24 +1,86 @@
-name: Deploy Locally
+name: Deploy to Test Environment
 
 on:
   push:
     branches: [test]
 
 jobs:
-  deploy-local:
-    runs-on: self-hosted
+  deploy-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cesizen
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build images locally
-        run: |
-          docker build -t cesizen-api:latest ./API
-          docker build -t cesizen-backoffice:latest ./BACKOFFICE
-          docker build -t cesizen-app:latest ./APP
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Deploy locally using script
+      # 🔧 Build des images
+      - name: Build API image
+        run: docker build -t cesizen-api:test ./API
+
+      - name: Build Backoffice image
+        run: docker build -t cesizen-backoffice:test ./BACKOFFICE
+
+      - name: Build Expo App image
+        run: docker build -t cesizen-app:test ./APP
+
+      # 📦 Prisma migration (deploy)
+      - name: Run Prisma Migrate Deploy
         run: |
-          chmod +x scripts/deploy-local-test.sh
-          ./scripts/deploy-local-test.sh
+          docker run --rm \
+            --network host \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
+            -e JWT_SECRET=test-secret \
+            cesizen-api:test \
+            npx prisma migrate deploy
+
+      # 🚀 Lancer les conteneurs
+      - name: Run API container
+        run: |
+          docker run -d \
+            --name cesizen-api-test \
+            --network host \
+            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
+            -e JWT_SECRET=test-secret \
+            cesizen-api:test
+
+      - name: Run Backoffice container
+        run: |
+          docker run -d \
+            --name cesizen-backoffice-test \
+            -p 4174:4173 \
+            -e VITE_API_URL=http://localhost:3000/api \
+            cesizen-backoffice:test
+
+      - name: Run App container
+        run: |
+          docker run -d \
+            --name cesizen-app-test \
+            -p 8081:80 \
+            cesizen-app:test
+
+      # ✅ Vérification basique
+      - name: Check API Health
+        run: |
+          echo "⏳ Waiting for API..."
+          sleep 10
+          curl -f http://localhost:3000/api/health || exit 1
+
+      - name: Done
+        run: echo "✅ Test environment deployed successfully!"
