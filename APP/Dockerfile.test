@@ -4,6 +4,8 @@ FROM node:18 AS builder
 WORKDIR /app
 COPY . .
 
+RUN npm install expo-cli -g
+
 RUN npm install --legacy-peer-deps
 
 RUN npx expo export --platform web --output-dir dist
