@@ -1,13 +1,15 @@
-FROM node:18
+# Étape 1 : builder
+FROM node:18 AS builder
 
 WORKDIR /app
-
-COPY package*.json ./
+COPY . .
 
 RUN npm install --legacy-peer-deps
 
-COPY . .
+RUN npx expo export --platform web --output-dir dist
 
-EXPOSE 8081
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-CMD ["npx", "expo", "start", "--dev-client", "--tunnel"]
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
