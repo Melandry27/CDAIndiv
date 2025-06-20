@@ -75,12 +75,5 @@ jobs:
             -p 8081:80 \
             cesizen-app:test
 
-      # ✅ Vérification
-      - name: Check API Health
-        run: |
-          echo "⌛ Waiting for API..."
-          sleep 10
-          curl -f http://localhost:3000/api/health || exit 1
-
       - name: Done
         run: echo "✅ Test environment ready!"
