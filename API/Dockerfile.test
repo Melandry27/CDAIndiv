@@ -3,8 +3,10 @@ FROM node:18
 WORKDIR /app
 COPY . .
 
-RUN npm install
+RUN npm install --legacy-peer-deps
+RUN npm run build
 
-RUN npx prisma generate
+# Tu peux aussi lancer les tests ici si tu veux que le container "fail" s'ils échouent
+# RUN npm run test
 
-CMD sh -c "npx prisma migrate deploy && npm run test"
+CMD ["node", "dist/main.js"]

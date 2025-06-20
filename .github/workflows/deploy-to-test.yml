@@ -30,17 +30,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 🔧 Build des images
-      - name: Build API image
-        run: docker build -t cesizen-api:test ./API
+      # 🧱 Build images via Dockerfile.test
+      - name: Build API test image
+        run: docker build -f API/Dockerfile.test -t cesizen-api:test ./API
 
-      - name: Build Backoffice image
-        run: docker build -t cesizen-backoffice:test ./BACKOFFICE
+      - name: Build Backoffice test image
+        run: docker build -f BACKOFFICE/Dockerfile.test -t cesizen-backoffice:test ./BACKOFFICE
 
-      - name: Build Expo App image
-        run: docker build -t cesizen-app:test ./APP
+      - name: Build App test image
+        run: docker build -f APP/Dockerfile.test -t cesizen-app:test ./APP
 
-      # 📦 Prisma migration (deploy)
+      # 📦 Migrations
       - name: Run Prisma Migrate Deploy
         run: |
           docker run --rm \
@@ -50,7 +50,7 @@ jobs:
             cesizen-api:test \
             npx prisma migrate deploy
 
-      # 🚀 Lancer les conteneurs
+      # 🚀 Lancer les containers
       - name: Run API container
         run: |
           docker run -d \
@@ -75,12 +75,12 @@ jobs:
             -p 8081:80 \
             cesizen-app:test
 
-      # ✅ Vérification basique
+      # ✅ Vérification
       - name: Check API Health
         run: |
-          echo "⏳ Waiting for API..."
+          echo "⌛ Waiting for API..."
           sleep 10
           curl -f http://localhost:3000/api/health || exit 1
 
       - name: Done
-        run: echo "✅ Test environment deployed successfully!"
+        run: echo "✅ Test environment ready!"
