@@ -1,0 +1,24 @@
+name: Deploy Locally
+
+on:
+  push:
+    branches: [test]
+
+jobs:
+  deploy-local:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build images locally
+        run: |
+          docker build -t cesizen-api:latest ./API
+          docker build -t cesizen-backoffice:latest ./BACKOFFICE
+          docker build -t cesizen-app:latest ./APP
+
+      - name: Deploy locally using script
+        run: |
+          chmod +x scripts/deploy-local-test.sh
+          ./scripts/deploy-local-test.sh
