@@ -54,11 +54,11 @@ jobs:
       - name: Run API container
         run: |
           docker run -d \
-            --name cesizen-api-test \
-            --network host \
-            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
-            -e JWT_SECRET=test-secret \
-            cesizen-api:test
+          --name cesizen-api-test \
+          -p 3000:3000 \
+          -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
+          -e JWT_SECRET=test-secret \
+          cesizen-api:test
 
       - name: Run Backoffice container
         run: |
