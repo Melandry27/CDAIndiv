@@ -4,11 +4,8 @@ WORKDIR /app
 COPY . .
 
 RUN npm install --legacy-peer-deps
+RUN npm run build
 
-RUN npx expo export --platform web --output-dir dist
-
-FROM nginx:alpine
-COPY --from=0 /app/dist /usr/share/nginx/html
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Lance vite preview sur le port par défaut
+EXPOSE 4173
+CMD ["npx", "vite", "preview", "--host"]
