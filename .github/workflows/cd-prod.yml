@@ -53,25 +53,19 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo "📦 Pulling Docker image for API..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+            echo "📁 Cloning/Updating repo"
+            cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
+            git pull origin main
 
-            echo "🛠 Running Prisma Migrate..."
-            docker run --rm \
-              --network host \
-              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest \
-              npx prisma migrate deploy
+            echo "📦 Installing API deps"
+            cd API
+            npm install
+            npx prisma generate
+            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen JWT_SECRET=${{ secrets.JWT_SECRET }} npx prisma migrate deploy
 
-            echo "🚀 Starting API container..."
-            docker stop cesizen-api || true && docker rm cesizen-api || true
-            docker run -d \
-              --name cesizen-api \
-              --network host \
-              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+            echo "🚀 Starting API with PM2"
+            pm2 delete cesizen-api || true
+            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen JWT_SECRET=${{ secrets.JWT_SECRET }} pm2 start dist/server.js --name cesizen-api
           EOF
 
   deploy-backoffice:
@@ -88,16 +82,18 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo "📦 Pulling Backoffice image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
+            echo "📁 Cloning/Updating repo"
+            cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
+            git pull origin main
 
-            echo "🚀 Starting Backoffice container..."
-            docker stop cesizen-back || true && docker rm cesizen-back || true
-            docker run -d \
-              --name cesizen-back \
-              -p 4173:4173 \
-              -e VITE_API_URL=http://localhost:3000/api \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
+            echo "📦 Installing backoffice deps"
+            cd BACKOFFICE
+            npm install --legacy-peer-deps
+            npm run build
+
+            echo "🚀 Starting backoffice with PM2"
+            pm2 delete cesizen-backoffice || true
+            VITE_API_URL=http://localhost:3000/api pm2 start "npx vite preview --host --port 4173" --name cesizen-backoffice
           EOF
 
   deploy-app:
@@ -114,15 +110,16 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo "📦 Pulling App image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
+            echo "📁 Cloning/Updating repo"
+            cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
+            git pull origin main
 
-            echo "🚀 Starting App container..."
-            docker stop cesizen-app || true && docker rm cesizen-app || true
-            docker run -d \
-              --name cesizen-app \
-              -p 8080:80\
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
+            echo "📦 Installing app deps"
+            cd APP
+            npm install --legacy-peer-deps
+            npx expo export --platform web --output-dir dist
 
-            echo "✅ Deployment complete"
+            echo "🚀 Starting app with PM2"
+            pm2 delete cesizen-app || true
+            pm2 serve dist 8080 --spa --name cesizen-app
           EOF
