@@ -63,6 +63,9 @@ jobs:
             npx prisma generate
             DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen JWT_SECRET=${{ secrets.JWT_SECRET }} npx prisma migrate deploy
 
+            echo "📦 Building API..."
+            npm run build 
+
             echo "🚀 Starting API with PM2"
             pm2 delete cesizen-api || true
             DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen JWT_SECRET=${{ secrets.JWT_SECRET }} pm2 start dist/server.js --name cesizen-api
