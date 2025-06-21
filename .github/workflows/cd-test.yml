@@ -16,12 +16,12 @@ jobs:
 
       - name: Deploy Test Stack on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
             set -e
 
             echo "📁 Switching to test environment"
             cd ~/cesizen-test || {
-              echo "❌ Dossier ~/cesizen-test introuvable. Clonage en cours..."
+              echo "❌ Dossier ~/cesizen-test introuvable. Clonage..."
               git clone -b test https://github.com/${{ github.repository }} cesizen-test
               cd cesizen-test
             }
@@ -43,20 +43,20 @@ jobs:
               -p 5433:5432 \
               postgres:15
 
-            echo "⏳ Waiting for test database to be ready..."
+            echo "⏳ Waiting for test DB to be ready..."
             sleep 10
 
-            echo "🐳 Building test images..."
-            docker build -f API/Dockerfile.test -t cesizen-api:test ./API
-            docker build -f BACKOFFICE/Dockerfile.test -t cesizen-backoffice:test ./BACKOFFICE
-            docker build -f APP/Dockerfile.test -t cesizen-app:test ./APP
+            echo "🐳 Pulling test images..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:test
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:test
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:test
 
             echo "🛠 Running Prisma Migrate on test DB..."
             docker run --rm \
               --network host \
               -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
               -e JWT_SECRET=test-secret \
-              cesizen-api:test \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:test \
               npx prisma migrate deploy
 
             echo "♻️ Restarting test containers..."
@@ -67,20 +67,20 @@ jobs:
               -p 3001:3000 \
               -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
               -e JWT_SECRET=test-secret \
-              cesizen-api:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:test
 
             docker stop cesizen-backoffice-test || true && docker rm cesizen-backoffice-test || true
             docker run -d \
               --name cesizen-backoffice-test \
               -p 4175:4173 \
               -e VITE_API_URL=http://localhost:3001/api \
-              cesizen-backoffice:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:test
 
             docker stop cesizen-app-test || true && docker rm cesizen-app-test || true
             docker run -d \
               --name cesizen-app-test \
               -p 8082:80 \
-              cesizen-app:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:test
 
-            echo "✅ Test environment (with DB) deployed on EC2"
+            echo "✅ Test environment deployed with pulled images!"
           EOF
