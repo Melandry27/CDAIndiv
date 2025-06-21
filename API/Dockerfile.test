@@ -4,9 +4,6 @@ WORKDIR /app
 COPY . .
 
 RUN npm install --legacy-peer-deps
-RUN npm run build
-
-# Tu peux aussi lancer les tests ici si tu veux que le container "fail" s'ils échouent
-# RUN npm run test
+RUN npm run build   
 
 CMD ["node", "dist/main.js"]

@@ -1,71 +1,131 @@
-name: Deploy to Test Environment
+name: cd test
 
 on:
   push:
     branches: [test]
 
 jobs:
-  deploy-test:
+  deploy-db-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Deploy Test Stack with PM2
+      - name: Deploy Postgres Test DB on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo "📁 Switch to test repo"
-            cd ~/cesizen-test || {
-              echo "Cloning repo..."
-              git clone -b test https://github.com/${{ github.repository }} cesizen-test
-              cd cesizen-test
-            }
+            echo "📦 Creating test DB volume"
+            docker volume create cesizen-db-test || true
 
-            git checkout test
-            git pull origin test
+            echo "🛑 Restarting test Postgres..."
+            docker stop cesizen-postgres-test || true
+            docker rm cesizen-postgres-test || true
 
-            echo "📦 Build images locally"
-            docker build -f API/Dockerfile.test -t cesizen-api:test ./API
-            docker build -f BACKOFFICE/Dockerfile.test -t cesizen-backoffice:test ./BACKOFFICE
-            docker build -f APP/Dockerfile.test -t cesizen-app:test ./APP
+            echo "🐘 Starting test Postgres..."
+            docker run -d \
+              --name cesizen-postgres-test \
+              -e POSTGRES_USER=postgres \
+              -e POSTGRES_PASSWORD=postgres \
+              -e POSTGRES_DB=cesizen_test \
+              -v cesizen-db-test:/var/lib/postgresql/data \
+              -p 5433:5432 \
+              postgres:15
 
-            echo "🛠 Migrate DB (PostgreSQL local on 5433 assumed running)"
+            echo "🕐 Waiting for Postgres test DB..."
+            sleep 10
+          EOF
+
+  deploy-api-test:
+    needs: deploy-db-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Deploy API Test on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "📥 Pulling API test image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:test
+
+            echo "🛠 Running Prisma Migrate on test DB..."
             docker run --rm \
               --network host \
               -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
               -e JWT_SECRET=test-secret \
-              cesizen-api:test \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:test \
               npx prisma migrate deploy
 
-            echo "♻️ Stop previous PM2 apps"
-            pm2 delete cesizen-api-test || true
-            pm2 delete cesizen-backoffice-test || true
-            pm2 delete cesizen-app-test || true
-
-            echo "🚀 Start containers via PM2"
-
-            pm2 start docker --name cesizen-api-test -- \
-              run -p 3001:3000 \
+            echo "🚀 Starting API test container..."
+            docker stop cesizen-api-test || true
+            docker rm cesizen-api-test || true
+            docker run -d \
+              --name cesizen-api-test \
+              -p 3001:3000 \
               -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
               -e JWT_SECRET=test-secret \
-              cesizen-api:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:test
+          EOF
 
-            pm2 start docker --name cesizen-backoffice-test -- \
-              run -p 4175:4173 \
+  deploy-backoffice-test:
+    needs: deploy-api-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Deploy Backoffice Test on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "📥 Pulling backoffice test image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:test
+
+            echo "🚀 Starting backoffice test container..."
+            docker stop cesizen-backoffice-test || true
+            docker rm cesizen-backoffice-test || true
+            docker run -d \
+              --name cesizen-backoffice-test \
+              -p 4175:4173 \
               -e VITE_API_URL=http://localhost:3001/api \
-              cesizen-backoffice:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:test
+          EOF
 
-            pm2 start docker --name cesizen-app-test -- \
-              run -p 8082:80 \
-              cesizen-app:test
+  deploy-app-test:
+    needs: deploy-backoffice-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-            echo "💾 Saving PM2 processes"
-            pm2 save
+      - name: Deploy App Test on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
 
-            echo "✅ Test env ready via PM2"
+            echo "📥 Pulling app test image..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:test
+
+            echo "🚀 Starting app test container..."
+            docker stop cesizen-app-test || true
+            docker rm cesizen-app-test || true
+            docker run -d \
+              --name cesizen-app-test \
+              -p 8082:80 \
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:test
+
+            echo "✅ Test deployment complete"
           EOF
