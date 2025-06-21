@@ -90,7 +90,7 @@ jobs:
             set -e
 
             echo "📥 Pulling backoffice test image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:test
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
 
             echo "🚀 Starting backoffice test container..."
             docker stop cesizen-backoffice-test || true
@@ -99,7 +99,7 @@ jobs:
               --name cesizen-backoffice-test \
               -p 4175:4173 \
               -e VITE_API_URL=http://localhost:3001/api \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
           EOF
 
   deploy-app-test:
@@ -117,7 +117,7 @@ jobs:
             set -e
 
             echo "📥 Pulling app test image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:test
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
 
             echo "🚀 Starting app test container..."
             docker stop cesizen-app-test || true
@@ -125,7 +125,7 @@ jobs:
             docker run -d \
               --name cesizen-app-test \
               -p 8082:80 \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:test
+              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
 
             echo "✅ Test deployment complete"
           EOF
