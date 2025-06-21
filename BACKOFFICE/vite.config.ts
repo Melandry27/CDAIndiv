@@ -16,8 +16,9 @@ export default defineConfig({
     },
   },
   preview: {
-    host: true,
-    port: 4175,
-    allowedHosts: ["cesizentest.webredirect.org"],
+    allowedHosts: [
+      "cesizentest.webredirect.org",
+      "cesizenprod.webredirect.org",
+    ],
   },
 });
