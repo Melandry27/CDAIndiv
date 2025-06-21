@@ -1,4 +1,4 @@
-name: cd test
+name: CD for Test CESIZEN
 
 on:
   push:
@@ -17,15 +17,9 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-
-            echo "📦 Creating test DB volume"
             docker volume create cesizen-db-test || true
-
-            echo "🛑 Restarting test Postgres..."
             docker stop cesizen-postgres-test || true
             docker rm cesizen-postgres-test || true
-
-            echo "🐘 Starting test Postgres..."
             docker run -d \
               --name cesizen-postgres-test \
               -e POSTGRES_USER=postgres \
@@ -34,8 +28,6 @@ jobs:
               -v cesizen-db-test:/var/lib/postgresql/data \
               -p 5433:5432 \
               postgres:15
-
-            echo "🕐 Waiting for Postgres test DB..."
             sleep 10
           EOF
 
@@ -48,31 +40,17 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Deploy API Test on EC2
+      - name: Build and Deploy API on EC2 with PM2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-
-            echo "📥 Pulling API test image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
-
-            echo "🛠 Running Prisma Migrate on test DB..."
-            docker run --rm \
-              --network host \
-              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
-              -e JWT_SECRET=test-secret \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest \
-              npx prisma migrate deploy
-
-            echo "🚀 Starting API test container..."
-            docker stop cesizen-api-test || true
-            docker rm cesizen-api-test || true
-            docker run -d \
-              --name cesizen-api-test \
-              -p 3001:3000 \
-              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
-              -e JWT_SECRET=test-secret \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+            cd ~/cesizen-test || (git clone -b test https://github.com/${{ github.repository }} cesizen-test && cd cesizen-test)
+            git pull origin test
+            cd API && npm install && npx prisma generate && \
+            DATABASE_URL="postgresql://postgres:postgres@localhost:5433/cesizen_test" JWT_SECRET=test-secret npx prisma migrate deploy && \
+            npm run build && \
+            pm2 delete cesizen-api-test || true && \
+            DATABASE_URL="postgresql://postgres:postgres@localhost:5433/cesizen_test" JWT_SECRET=test-secret pm2 start dist/server.js --name cesizen-api-test
           EOF
 
   deploy-backoffice-test:
@@ -84,22 +62,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Deploy Backoffice Test on EC2
+      - name: Build and Deploy Backoffice on EC2 with PM2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-
-            echo "📥 Pulling backoffice test image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
-
-            echo "🚀 Starting backoffice test container..."
-            docker stop cesizen-backoffice-test || true
-            docker rm cesizen-backoffice-test || true
-            docker run -d \
-              --name cesizen-backoffice-test \
-              -p 4175:4173 \
-              -e VITE_API_URL=http://localhost:3001/api \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
+            cd ~/cesizen-test/BACKOFFICE
+            npm install
+            npm run build
+            pm2 delete cesizen-backoffice-test || true
+            VITE_API_URL="http://localhost:3001/api" pm2 start "npx vite preview --port 4175" --name cesizen-backoffice-test
           EOF
 
   deploy-app-test:
@@ -111,21 +82,18 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Deploy App Test on EC2
+      - name: Build and Deploy App on EC2 via NGINX
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-
-            echo "📥 Pulling app test image..."
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
-
-            echo "🚀 Starting app test container..."
+            cd ~/cesizen-test/APP
+            npm install
+            npx expo export --platform web --output-dir dist
             docker stop cesizen-app-test || true
             docker rm cesizen-app-test || true
             docker run -d \
               --name cesizen-app-test \
               -p 8082:80 \
-              ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
-
-            echo "✅ Test deployment complete"
+              -v $(pwd)/dist:/usr/share/nginx/html:ro \
+              nginx:alpine
           EOF
