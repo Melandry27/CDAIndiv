@@ -122,6 +122,13 @@ jobs:
             echo "🧹 Killing old PM2 App test process"
             pm2 delete cesizen-app-test || true
 
+            echo "🔍 Killing process on port 8082 (if any)"
+            PID=\$(lsof -t -i:8082 || true)
+            if [ ! -z "\$PID" ]; then
+              echo "🔪 Killing process \$PID on port 8082"
+              kill -9 \$PID
+            fi
+
             echo "📁 Cloning/Updating repo for App"
             cd ~/cesizen-test || git clone -b test https://github.com/${{ github.repository }} ~/cesizen-test && cd ~/cesizen-test
             git pull origin test
