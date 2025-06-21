@@ -15,7 +15,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  server: {
+  preview: {
     host: true,
     port: 4175,
     allowedHosts: ["cesizentest.webredirect.org"],
