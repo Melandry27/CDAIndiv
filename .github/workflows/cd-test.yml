@@ -39,6 +39,26 @@ jobs:
             sleep 10
           EOF
 
+  kill-pm2-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Kill PM2 on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+
+            echo "🛑 Killing PM2 processes..."
+            echo "🧹 Nettoyage des processus PM2 de test..."
+            pm2 delete cesizen-api-test || true
+            pm2 delete cesizen-backoffice-test || true
+            pm2 delete cesizen-app-test || true
+          EOF
+
   deploy-api-test:
     needs: deploy-db-test
     runs-on: ubuntu-latest
