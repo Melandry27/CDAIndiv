@@ -39,7 +39,7 @@ jobs:
             sleep 10
           EOF
 
-  kill-pm2-test:
+  kill-containers-test:
     runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
@@ -47,16 +47,19 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Kill PM2 on EC2
+      - name: Kill containers on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            echo "🛑 Killing PM2 processes..."
-            echo "🧹 Nettoyage des processus PM2 de test..."
-            pm2 delete cesizen-api-test || true
-            pm2 delete cesizen-backoffice-test || true
-            pm2 delete cesizen-app-test || true
+            echo "🛑 Killing containers..."
+            docker stop cesizen-api-test || true
+            docker stop cesizen-backoffice-test || true
+            docker stop cesizen-app-test || true
+            docker rm cesizen-api-test || true
+            docker rm cesizen-backoffice-test || true
+            docker rm cesizen-app-test || true
+            echo "✅ Containers killed"
           EOF
 
   deploy-api-test:
