@@ -119,11 +119,8 @@ jobs:
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
 
-            PID=$(lsof -t -i:8082 || true)
-            if [ ! -z "$PID" ]; then
-              echo "🔪 Killing process $PID on port 8082"
-              kill -9 $PID
-            fi
+            echo "🧹 Killing old PM2 APP test process"
+            pm2 delete cesizen-app-test || true
 
             echo "📁 Cloning/Updating repo for App"
             cd ~/cesizen-test || git clone -b test https://github.com/${{ github.repository }} ~/cesizen-test && cd ~/cesizen-test
