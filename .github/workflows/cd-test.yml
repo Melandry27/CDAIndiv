@@ -68,8 +68,11 @@ jobs:
             echo "🛠 Running migrations"
             DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test JWT_SECRET=test-secret npx prisma migrate deploy
 
+            echo "📦 Building API"
+            npm run build
+
             echo "🚀 Starting API test with PM2"
-            DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test JWT_SECRET=test-secret pm2 start dist/server.js --name cesizen-api-test || pm2 restart cesizen-api-test
+            DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test JWT_SECRET=test-secret pm2 start dist/server.js --name cesizen-api-test
           EOF
 
   deploy-backoffice-test:
