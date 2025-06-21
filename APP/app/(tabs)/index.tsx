@@ -48,7 +48,7 @@ export default function HomeScreen() {
       />
 
       <View style={styles.content}>
-        <Text style={styles.title}>Quel est votre mood du jour ?</Text>
+        <Text style={styles.title}>Quel est votre mood du jour ? TEST</Text>
 
         {loadingCategories ? (
           <ActivityIndicator
