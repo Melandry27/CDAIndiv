@@ -9,10 +9,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-	plugins: [tailwindcss(), react(), tsconfigPaths()],
-	resolve: {
-		alias: {
-			"@": path.resolve(__dirname, "./src"),
-		},
-	},
+  plugins: [tailwindcss(), react(), tsconfigPaths()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  preview: {
+    host: true,
+    port: 4175,
+    allowedHosts: ["cesizentest.webredirect.org"],
+  },
 });
