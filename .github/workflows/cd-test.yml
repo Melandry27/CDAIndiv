@@ -8,72 +8,64 @@ jobs:
   deploy-test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: cesizen
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # 🧱 Build images via Dockerfile.test
-      - name: Build API test image
-        run: docker build -f API/Dockerfile.test -t cesizen-api:test ./API
-
-      - name: Build Backoffice test image
-        run: docker build -f BACKOFFICE/Dockerfile.test -t cesizen-backoffice:test ./BACKOFFICE
-
-      - name: Build App test image
-        run: docker build -f APP/Dockerfile.test -t cesizen-app:test ./APP
-
-      # 📦 Migrations
-      - name: Run Prisma Migrate Deploy
+      - name: Deploy Test Stack with PM2
         run: |
-          docker run --rm \
-            --network host \
-            -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
-            -e JWT_SECRET=test-secret \
-            cesizen-api:test \
-            npx prisma migrate deploy
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
 
-      # 🚀 Lancer les containers
-      - name: Run API container
-        run: |
-          docker run -d \
-          --name cesizen-api-test \
-          -p 3000:3000 \
-          -e DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen \
-          -e JWT_SECRET=test-secret \
-          cesizen-api:test
+            echo "📁 Switch to test repo"
+            cd ~/cesizen-test || {
+              echo "Cloning repo..."
+              git clone -b test https://github.com/${{ github.repository }} cesizen-test
+              cd cesizen-test
+            }
 
-      - name: Run Backoffice container
-        run: |
-          docker run -d \
-            --name cesizen-backoffice-test \
-            -p 4174:4173 \
-            -e VITE_API_URL=http://localhost:3000/api \
-            cesizen-backoffice:test
+            git checkout test
+            git pull origin test
 
-      - name: Run App container
-        run: |
-          docker run -d \
-            --name cesizen-app-test \
-            -p 8081:80 \
-            cesizen-app:test
+            echo "📦 Build images locally"
+            docker build -f API/Dockerfile.test -t cesizen-api:test ./API
+            docker build -f BACKOFFICE/Dockerfile.test -t cesizen-backoffice:test ./BACKOFFICE
+            docker build -f APP/Dockerfile.test -t cesizen-app:test ./APP
 
-      - name: Done
-        run: echo "✅ Test environment ready!"
+            echo "🛠 Migrate DB (PostgreSQL local on 5433 assumed running)"
+            docker run --rm \
+              --network host \
+              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
+              -e JWT_SECRET=test-secret \
+              cesizen-api:test \
+              npx prisma migrate deploy
+
+            echo "♻️ Stop previous PM2 apps"
+            pm2 delete cesizen-api-test || true
+            pm2 delete cesizen-backoffice-test || true
+            pm2 delete cesizen-app-test || true
+
+            echo "🚀 Start containers via PM2"
+
+            pm2 start docker --name cesizen-api-test -- \
+              run -p 3001:3000 \
+              -e DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test \
+              -e JWT_SECRET=test-secret \
+              cesizen-api:test
+
+            pm2 start docker --name cesizen-backoffice-test -- \
+              run -p 4175:4173 \
+              -e VITE_API_URL=http://localhost:3001/api \
+              cesizen-backoffice:test
+
+            pm2 start docker --name cesizen-app-test -- \
+              run -p 8082:80 \
+              cesizen-app:test
+
+            echo "💾 Saving PM2 processes"
+            pm2 save
+
+            echo "✅ Test env ready via PM2"
+          EOF
