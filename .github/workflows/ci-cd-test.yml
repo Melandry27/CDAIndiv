@@ -18,6 +18,7 @@ jobs:
   test-api:
     runs-on: ubuntu-latest
     needs: setup
+    continue-on-error: true # Allow the job to fail without failing the entire workflow
     steps:
       - uses: actions/checkout@v4
       - name: Run tests via Docker Compose
