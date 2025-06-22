@@ -244,7 +244,7 @@ jobs:
               location /api/ {
                 proxy_pass http://localhost:3000/api/;
                 proxy_set_header Host \$host;
-                proxy_Set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Real-IP \$remote_addr;
               }
             }
           }
