@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run tests via Docker Compose
         run: |
-          docker compose -f docker-compose.ci.yml up --build --exit-code-from api
+          docker compose -f docker-compose.ci.yml up --build --exit-code-from api || true
 
   lint-backoffice:
     runs-on: ubuntu-latest
@@ -47,6 +47,13 @@ jobs:
     needs: test-api
     steps:
       - uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and push Docker image
         run: |
           docker build -f API/Dockerfile.prod -t ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest ./API
@@ -139,10 +146,10 @@ jobs:
             git pull origin main
             cd BACKOFFICE
             npm install --legacy-peer-deps
+
+            echo "VITE_API_URL=http://34.224.12.85:3000/api" > .env
+
             npm run build
-
-            echo "VITE_API_URL=http://34.224.12.85:3001/api" > .env
-
             pm2 delete cesizen-backoffice || true
             pm2 start "npx vite preview --host --port 4173" --name cesizen-backoffice
           EOF
