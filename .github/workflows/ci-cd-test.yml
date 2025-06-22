@@ -1,42 +1,90 @@
-name: cd test
+name: CI + CD Test
 
 on:
-  workflow_run:
-    workflows: ["CI Pipeline CESIZen"]
-    types:
-      - completed
+  push:
+    branches: [test]
 
 jobs:
-  trigger-check:
+  # ---------------- CI ----------------
+  setup:
     runs-on: ubuntu-latest
     steps:
-      - name: Triggering CD for test branch
-        run: |
-          echo "📌 CI status: ${{ github.event.workflow_run.conclusion }}"
-          echo "📌 Target branch: ${{ github.event.workflow_run.head_branch }}"
-          echo "✅ CI Passed on test, continuing with CD for test environment"
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  deploy-db-test:
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+  test-api:
     runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests via Docker Compose
+        run: |
+          docker compose -f docker-compose.ci.yml up --build --exit-code-from api
+
+  lint-backoffice:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint backoffice
+        run: |
+          docker run --rm -v ${{ github.workspace }}/BACKOFFICE:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run lint"
+
+  lint-app:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint mobile app
+        run: |
+          docker run --rm -v ${{ github.workspace }}/APP:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run lint || npx expo lint"
+
+  build-api:
+    runs-on: ubuntu-latest
+    needs: test-api
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push Docker image
+        run: |
+          docker build -f API/Dockerfile.prod -t ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest ./API
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+
+  build-backoffice:
+    runs-on: ubuntu-latest
+    needs: lint-backoffice
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backoffice
+        run: |
+          docker run --rm -v ${{ github.workspace }}/BACKOFFICE:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run build"
+
+  build-app:
+    runs-on: ubuntu-latest
+    needs: lint-app
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Expo Web
+        run: |
+          docker run --rm -v ${{ github.workspace }}/APP:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npx expo export --platform web"
+
+  # ---------------- CD ----------------
+  deploy-db:
+    runs-on: ubuntu-latest
+    needs: [build-api, build-backoffice, build-app]
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-      - name: Deploy Postgres Test DB on EC2
+      - name: Deploy Test DB
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-
-            echo "📦 Creating test DB volume"
             docker volume create cesizen-db-test || true
-
-            echo "🛑 Restarting test Postgres..."
             docker stop cesizen-postgres-test || true
             docker rm cesizen-postgres-test || true
-
-            echo "🐘 Starting test Postgres..."
             docker run -d \
               --name cesizen-postgres-test \
               -e POSTGRES_USER=postgres \
@@ -45,104 +93,67 @@ jobs:
               -v cesizen-db-test:/var/lib/postgresql/data \
               -p 5433:5432 \
               postgres:15
-
-            echo "🕐 Waiting for Postgres test DB..."
             sleep 10
           EOF
 
-  deploy-api-test:
-    needs: deploy-db-test
+  deploy-api:
     runs-on: ubuntu-latest
+    needs: deploy-db
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-      - name: Deploy API Test via PM2
+      - name: Deploy API
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-
-            echo "🧹 Killing old PM2 API test process"
-            pm2 delete cesizen-api-test || true
-
-            echo "📁 Cloning/Updating repo for API"
             cd ~/cesizen-test || git clone -b test https://github.com/${{ github.repository }} ~/cesizen-test && cd ~/cesizen-test
             git pull origin test
-
-            echo "📦 Installing API deps"
             cd API
             npm install
             npx prisma generate
-
-            echo "🛠 Running migrations"
             DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test JWT_SECRET=test-secret npx prisma migrate deploy
-
-            echo "📦 Building API"
             npm run build
-
-            echo "🚀 Starting API test with PM2"
+            pm2 delete cesizen-api-test || true
             DATABASE_URL=postgresql://postgres:postgres@localhost:5433/cesizen_test JWT_SECRET=test-secret pm2 start dist/server.js --name cesizen-api-test
           EOF
 
-  deploy-backoffice-test:
-    needs: deploy-api-test
+  deploy-backoffice:
     runs-on: ubuntu-latest
+    needs: deploy-api
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-      - name: Deploy Backoffice Test via PM2
+      - name: Deploy Backoffice
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-
-            echo "🧹 Killing old PM2 Backoffice test process"
-            pm2 delete cesizen-backoffice-test || true
-
-            echo "📁 Cloning/Updating repo for Backoffice"
             cd ~/cesizen-test || git clone -b test https://github.com/${{ github.repository }} ~/cesizen-test && cd ~/cesizen-test
             git pull origin test
-
-            echo "📦 Installing Backoffice deps"
             cd BACKOFFICE
             npm install --legacy-peer-deps
             npm run build
-
-            echo "🚀 Starting Backoffice test with PM2"
+            pm2 delete cesizen-backoffice-test || true
             VITE_API_URL=http://localhost:3001/api pm2 start "npx vite preview --host --port 4175" --name cesizen-backoffice-test
           EOF
 
-  deploy-app-test:
-    needs: deploy-backoffice-test
+  deploy-app:
     runs-on: ubuntu-latest
+    needs: deploy-backoffice
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-      - name: Deploy App Test via PM2
+      - name: Deploy Expo App
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
-
-            echo "🧹 Killing old PM2 APP test process"
-            pm2 delete cesizen-app-test || true
-
-            echo "📁 Cloning/Updating repo for App"
             cd ~/cesizen-test || git clone -b test https://github.com/${{ github.repository }} ~/cesizen-test && cd ~/cesizen-test
             git pull origin test
-
-            echo "📦 Installing App deps"
             cd APP
             npm install --legacy-peer-deps
             npx expo export --platform web --output-dir dist
-
-            echo "🚀 Starting App test with PM2 (NGINX)"
-            fuser -k 8082/tcp || true
+            pm2 delete cesizen-app-test || true
             pm2 serve dist 8082 --spa --name cesizen-app-test
           EOF
