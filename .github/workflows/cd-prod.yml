@@ -1,10 +1,19 @@
 name: Deploy to Production
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["CI Pipeline CESIZen"]
+    types:
+      - completed
 
 jobs:
+  trigger-check:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Triggering CD for main branch
+        run: echo "✅ CI Passed on main, continuing with CD for production"
+
   deploy-db:
     runs-on: ubuntu-latest
     steps:
