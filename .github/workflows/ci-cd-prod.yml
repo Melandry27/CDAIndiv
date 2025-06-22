@@ -104,6 +104,7 @@ jobs:
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
       - name: Deploy API
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
@@ -112,10 +113,15 @@ jobs:
             cd API
             npm install
             npx prisma generate
-            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen JWT_SECRET=${{ secrets.JWT_SECRET }} npx prisma migrate deploy
+
+            echo "PORT=3000" > .env
+            echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen" >> .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+
+            npx prisma migrate deploy
             npm run build
             pm2 delete cesizen-api || true
-            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen JWT_SECRET=${{ secrets.JWT_SECRET }} pm2 start dist/server.js --name cesizen-api
+            pm2 start dist/server.js --name cesizen-api
           EOF
 
   deploy-backoffice:
