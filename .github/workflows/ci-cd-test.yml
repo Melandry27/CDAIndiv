@@ -140,9 +140,12 @@ jobs:
             git pull origin test
             cd BACKOFFICE
             npm install --legacy-peer-deps
+
+            echo "VITE_API_URL=http://34.224.12.85:3001/api" > .env
+
             npm run build
             pm2 delete cesizen-backoffice-test || true
-            VITE_API_URL=http://localhost:3001/api pm2 start "npx vite preview --host --port 4175" --name cesizen-backoffice-test
+            pm2 start "npx vite preview --host --port 4175" --name cesizen-backoffice-test
           EOF
 
   deploy-app:
