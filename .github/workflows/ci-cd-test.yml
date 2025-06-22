@@ -203,13 +203,16 @@ jobs:
             }
 
             location /backoffice/ {
-              proxy_pass http://localhost:4175/;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-              rewrite ^/backoffice(.*)$ $1 break;
-            }
+            proxy_pass http://localhost:4175/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+
+            # Réécrit l'URL pour que /backoffice/... => /...
+            rewrite ^/backoffice(/.*)$ $1 break;
+          }
 
             location /api/ {
               proxy_pass http://localhost:3001/api/;
@@ -236,13 +239,16 @@ jobs:
             }
 
             location /backoffice/ {
-              proxy_pass http://localhost:4173/;
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
-              rewrite ^/backoffice(.*)$ $1 break;
-            }
+            proxy_pass http://localhost:4173/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_redirect off;
+
+            # Réécrit l'URL pour que /backoffice/... => /...
+            rewrite ^/backoffice(/.*)$ $1 break;
+          }
 
             location /api/ {
               proxy_pass http://localhost:3000/api/;
