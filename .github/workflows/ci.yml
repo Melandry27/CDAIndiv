@@ -28,7 +28,7 @@ jobs:
           docker compose -f docker-compose.ci.yml up --build --exit-code-from api || true
 
   build-api:
-    name: Build and Push API Image
+    name: build-api
     runs-on: ubuntu-latest
     needs: test-api
     steps:
