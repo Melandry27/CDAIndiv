@@ -173,10 +173,10 @@ jobs:
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
       - name: Setup Reverse Proxy on EC2
         run: |
           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            set -e
             mkdir -p ~/reverse-proxy
             cd ~/reverse-proxy
 
@@ -185,6 +185,9 @@ jobs:
           events {}
 
           http {
+            #########################################
+            # ENVIRONNEMENT TEST
+            #########################################
             server {
               listen 80;
               server_name cesizentest.webredirect.org;
@@ -208,24 +211,52 @@ jobs:
                 proxy_set_header X-Real-IP \$remote_addr;
               }
             }
+
+            #########################################
+            # ENVIRONNEMENT PROD
+            #########################################
+            server {
+              listen 80;
+              server_name cesizenprod.webredirect.org;
+
+              location / {
+                proxy_pass http://localhost:8080/;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+              }
+
+              location /backoffice/ {
+                proxy_pass http://localhost:4173/;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                rewrite ^/backoffice(/.*)$ \$1 break;
+              }
+
+              location /api/ {
+                proxy_pass http://localhost:3000/api/;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+              }
+            }
           }
           NGINX
 
             echo "📄 Writing docker-compose.yml"
             cat << 'COMPOSE' > docker-compose.yml
-      version: "3.9"
-  services:
-    reverse-proxy:
-      image: nginx:latest
-      container_name: reverse-proxy
-      ports:
-        - "80:80"
-      volumes:
-        - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      restart: unless-stopped
-        COMPOSE
+          version: "3.9"
 
-        echo "🚀 Starting reverse proxy..."
-        docker compose down || true
-        docker compose up -d
-        EOF
+          services:
+            reverse-proxy:
+              image: nginx:latest
+              container_name: reverse-proxy
+              ports:
+                - "80:80"
+              volumes:
+                - ./nginx.conf:/etc/nginx/nginx.conf:ro
+              restart: unless-stopped
+          COMPOSE
+
+            echo "🚀 Starting reverse proxy..."
+            docker compose down || true
+            docker compose up -d
+          EOF
