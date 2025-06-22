@@ -12,7 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Triggering CD for main branch
-        run: echo "✅ CI Passed on main, continuing with CD for production"
+        run: |
+          echo "📌 CI status: ${{ github.event.workflow_run.conclusion }}"
+          echo "📌 Target branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "✅ CI Passed on main, continuing with CD for production"
 
   deploy-db:
     runs-on: ubuntu-latest

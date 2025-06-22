@@ -12,7 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Triggering CD for test branch
-        run: echo "✅ CI Passed on test, continuing with CD for test environment"
+        run: |
+          echo "📌 CI status: ${{ github.event.workflow_run.conclusion }}"
+          echo "📌 Target branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "✅ CI Passed on test, continuing with CD for test environment"
 
   deploy-db-test:
     runs-on: ubuntu-latest
