@@ -193,40 +193,37 @@ jobs:
   # ---------------- CD ----------------
   # ------------------------------ CD ------------------------------
 
-deploy-stack:
-  runs-on: ubuntu-latest
-  if: ${{ github.ref_name == 'main' }} # on livre la prod uniquement depuis main
-  environment:
-    name: prod
-    url: http://34.224.12.85
-  needs:
-    - build-api-image
-    - build-backoffice-image
-    - build-app-image
-  steps:
-    - name: Déploiement complet via docker-compose
-      uses: appleboy/ssh-action@v1
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          set -e
+  deploy-stack:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref_name == 'main' }} # on livre la prod uniquement depuis main
+    environment:
+      name: prod
+      url: http://34.224.12.85
+    needs: ["build-api-image", "build-backoffice-image", "build-app-image"]
+    steps:
+      - name: Déploiement complet via docker-compose
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
 
-          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
 
-          cd ~
-          if [ ! -d cesizen-prod ]; then
-            git clone -b main https://github.com/${{ github.repository }} cesizen-prod
-          fi
-          cd cesizen-prod && git pull origin main
+            cd ~
+            if [ ! -d cesizen-prod ]; then
+              git clone -b main https://github.com/${{ github.repository }} cesizen-prod
+            fi
+            cd cesizen-prod && git pull origin main
 
-          export DOCKER_USER=ghcr.io/melandry27/CDAIndiv      # même préfixe que dans la CI
-          export TAG=${{ github.sha }}                        # même tag SHA que les images
-          export JWT_SECRET='${{ secrets.JWT_SECRET }}'
+            export DOCKER_USER=ghcr.io/melandry27/CDAIndiv      # même préfixe que dans la CI
+            export TAG=${{ github.sha }}                        # même tag SHA que les images
+            export JWT_SECRET='${{ secrets.JWT_SECRET }}'
 
-          sudo docker compose -f API/docker-compose.prod.yml pull
-          sudo docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
+            sudo docker compose -f API/docker-compose.prod.yml pull
+            sudo docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
 
   setup-reverse-proxy:
     runs-on: ubuntu-latest
