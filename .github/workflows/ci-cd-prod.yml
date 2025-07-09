@@ -192,7 +192,6 @@ jobs:
             ghcr.io/melandry27/cdaindiv/cesizen-app:${{ github.sha }}
 
   # ------------------------------ CD ------------------------------
-
   deploy-stack:
     runs-on: ubuntu-latest
     if: ${{ github.ref_name == 'main' }}
@@ -216,16 +215,28 @@ jobs:
             git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod
             cd ~/cesizen-prod 
 
-            cd API
-            npx prisma generate
-            npx prisma migrate deploy
-            cd ../ 
-
             export DOCKER_USER=ghcr.io/melandry27/cdaindiv    
             export TAG=${{ github.sha }}                       
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
 
+            # Pull images
             sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET docker compose -f API/docker-compose.prod.yml pull
+
+            # Lance le conteneur Postgres
+            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET docker compose -f API/docker-compose.prod.yml up -d db
+
+            # Attend que Postgres réponde
+            echo "⏳ Waiting for Postgres..."
+            until docker exec $(docker compose -f API/docker-compose.prod.yml ps -q db) pg_isready -U postgres > /dev/null 2>&1; do
+              sleep 2
+            done
+            echo "✅ Postgres ready"
+
+            # Exécute la migration dans un conteneur jetable basé sur l'image API
+            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET \
+              docker compose -f API/docker-compose.prod.yml run --rm api npx prisma migrate deploy
+
+            # Lance toute la stack
             sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
 
   setup-reverse-proxy:
