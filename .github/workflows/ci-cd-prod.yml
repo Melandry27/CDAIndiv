@@ -190,7 +190,6 @@ jobs:
             ghcr.io/melandry27/cdaindiv/app:latest
             ghcr.io/melandry27/cdaindiv/app:${{ github.sha }}
 
-  # ---------------- CD ----------------
   # ------------------------------ CD ------------------------------
 
   deploy-stack:
