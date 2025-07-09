@@ -42,6 +42,13 @@ jobs:
         run: npm audit --if-present
         continue-on-error: true
 
+      - name: Enregister le cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+
   ci-backoffice:
     runs-on: ubuntu-latest
     steps:
@@ -65,6 +72,13 @@ jobs:
         working-directory: ./BACKOFFICE
         run: npm audit --if-present
         continue-on-error: true
+
+      - name: Enregister le cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
 
   ci-app:
     runs-on: ubuntu-latest
@@ -90,27 +104,37 @@ jobs:
         run: npm audit --if-present
         continue-on-error: true
 
+      - name: Enregister le cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+
   build-api-image:
     runs-on: ubuntu-latest
     needs: ci-api
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - name: Login Docker Hub
+
+      - name: Connection à DockerHub
         uses: docker/login-action@v3
         with:
+          registry: ghcr.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build & push API image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./API
           file: ./API/Dockerfile.prod
+          target: api
           push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ghcr.io/melandry27/CDAIndiv/api:${{ github.ref_name }}
           build-args: |
             PORT=3000
             DATABASE_URL=postgres://postgres:postgres@localhost:5432/cesizen
@@ -119,72 +143,90 @@ jobs:
   build-backoffice-image:
     runs-on: ubuntu-latest
     needs: ci-backoffice
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+
+      - name: Connection à DockerHub
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
         with:
           context: ./BACKOFFICE
           file: ./BACKOFFICE/Dockerfile.prod
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/melandry27/CDAIndiv/backoffice:latest
+            ghcr.io/melandry27/CDAIndiv/backoffice:${{ github.sha }}
+          build-args: |
+            VITE_API_URL=http://34.224.12.85:3000/api
 
   build-app-image:
     runs-on: ubuntu-latest
     needs: ci-app
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v5
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
         with:
           context: ./APP
           file: ./APP/Dockerfile.prod
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/melandry27/CDAIndiv/app:latest
+            ghcr.io/melandry27/CDAIndiv/app:${{ github.sha }}
 
   # ---------------- CD ----------------
-  deploy-stack:
-    runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'main' }}
-    environment:
-      name: prod
-      url: http://34.224.12.85
-    needs:
-      - build-api-image
-      - build-backoffice-image
-      - build-app-image
-    steps:
-      - uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # Cloner / mettre à jour le dépôt (compose + configs)
-            mkdir -p ~/ressource-prod && cd ~/ressource-prod
-            if [ ! -d cesizen-prod ]; then
-              git clone -b main https://github.com/${{ github.repository }} cesizen-prod
-            fi
-            cd cesizen-prod && git pull origin main
-            export DOCKER_USER=${{ secrets.DOCKERHUB_USERNAME }}
-            export TAG=${{ github.sha }}
-            export JWT_SECRET='${{ secrets.JWT_SECRET }}'
-            sudo docker compose -f API/docker-compose.prod.yml pull
-            sudo docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
+  # ------------------------------ CD ------------------------------
+
+deploy-stack:
+  runs-on: ubuntu-latest
+  if: ${{ github.ref_name == 'main' }} # on livre la prod uniquement depuis main
+  environment:
+    name: prod
+    url: http://34.224.12.85
+  needs:
+    - build-api-image
+    - build-backoffice-image
+    - build-app-image
+  steps:
+    - name: Déploiement complet via docker-compose
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          set -e
+
+          echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+
+          cd ~
+          if [ ! -d cesizen-prod ]; then
+            git clone -b main https://github.com/${{ github.repository }} cesizen-prod
+          fi
+          cd cesizen-prod && git pull origin main
+
+          export DOCKER_USER=ghcr.io/melandry27/CDAIndiv      # même préfixe que dans la CI
+          export TAG=${{ github.sha }}                        # même tag SHA que les images
+          export JWT_SECRET='${{ secrets.JWT_SECRET }}'
+
+          sudo docker compose -f API/docker-compose.prod.yml pull
+          sudo docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
 
   setup-reverse-proxy:
     runs-on: ubuntu-latest
