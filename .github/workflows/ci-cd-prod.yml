@@ -220,10 +220,8 @@ jobs:
             export TAG=${{ github.sha }}                       
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
 
-            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET \ 
-              docker compose -f API/docker-compose.prod.yml pull
-            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET \ 
-              docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
+            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET docker compose -f API/docker-compose.prod.yml pull
+            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
 
   setup-reverse-proxy:
     runs-on: ubuntu-latest
