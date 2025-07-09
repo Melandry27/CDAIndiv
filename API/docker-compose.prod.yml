@@ -1,0 +1,41 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cesizen
+    volumes:
+      - cesizen-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    image: ${DOCKER_USER}/cesizen-api:${TAG}
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://postgres:postgres@db:5432/cesizen
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "3000:3000"
+
+  backoffice:
+    image: ${DOCKER_USER}/cesizen-backoffice:${TAG}
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:3000/api
+    ports:
+      - "4173:80"
+
+  app:
+    image: ${DOCKER_USER}/cesizen-app:${TAG}
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+
+volumes:
+  cesizen-db-data:

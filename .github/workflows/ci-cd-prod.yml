@@ -21,7 +21,7 @@ jobs:
       - name: Setup Node + cache
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
 
       - name: Install deps
         working-directory: ./API
@@ -42,16 +42,6 @@ jobs:
         run: npm audit --if-present
         continue-on-error: true
 
-      - name: Build API
-        working-directory: ./API
-        run: npm run build
-
-      - name: Upload API build
-        uses: actions/upload-artifact@v4
-        with:
-          name: API-dist
-          path: API/dist
-
   ci-backoffice:
     runs-on: ubuntu-latest
     steps:
@@ -60,7 +50,7 @@ jobs:
       - name: Setup Node + cache
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
 
       - name: Install deps
         working-directory: ./BACKOFFICE
@@ -76,16 +66,6 @@ jobs:
         run: npm audit --if-present
         continue-on-error: true
 
-      - name: Build Backoffice
-        working-directory: ./BACKOFFICE
-        run: npm run build
-
-      - name: Upload Backoffice build
-        uses: actions/upload-artifact@v4
-        with:
-          name: BACKOFFICE-dist
-          path: BACKOFFICE/dist
-
   ci-app:
     runs-on: ubuntu-latest
     steps:
@@ -94,7 +74,7 @@ jobs:
       - name: Setup Node + cache
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 20
 
       - name: Install deps
         working-directory: ./APP
@@ -110,15 +90,71 @@ jobs:
         run: npm audit --if-present
         continue-on-error: true
 
-      - name: Build Expo Web
-        working-directory: ./APP
-        run: npx expo export --platform web
-
-      - name: Upload App build
-        uses: actions/upload-artifact@v4
+  build-api-image:
+    runs-on: ubuntu-latest
+    needs: ci-api
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
         with:
-          name: APP-dist
-          path: APP/dist
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build & push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./API
+          file: ./API/Dockerfile.prod
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PORT=3000
+            DATABASE_URL=postgres://postgres:postgres@localhost:5432/cesizen
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+
+  build-backoffice-image:
+    runs-on: ubuntu-latest
+    needs: ci-backoffice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./BACKOFFICE
+          file: ./BACKOFFICE/Dockerfile.prod
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-backoffice:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-app-image:
+    runs-on: ubuntu-latest
+    needs: ci-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./APP
+          file: ./APP/Dockerfile.prod
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-app:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ---------------- CD ----------------
   deploy-db:
@@ -146,80 +182,38 @@ jobs:
             sleep 10
           EOF
 
-  deploy-api:
+  deploy-stack:
     runs-on: ubuntu-latest
-    needs: deploy-db
+    if: ${{ github.ref_name == 'main' }}
+    environment:
+      name: prod
+      url: http://34.224.12.85
+    needs:
+      - build-api-image
+      - build-backoffice-image
+      - build-app-image
     steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.7.0
+      - uses: appleboy/ssh-action@v1
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-
-      - name: Deploy API
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
-            git pull origin main
-            cd API
-            npm install
-            npx prisma generate
-
-            echo "PORT=3000" > .env
-            echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen" >> .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-
-            npx prisma migrate deploy
-            npm run build
-            pm2 delete cesizen-api || true
-            pm2 start dist/server.js --name cesizen-api
-          EOF
-
-  deploy-backoffice:
-    runs-on: ubuntu-latest
-    needs: deploy-api
-    steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-      - name: Deploy Backoffice
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
-            git pull origin main
-            cd BACKOFFICE
-            npm install --legacy-peer-deps
-
-            echo "VITE_API_URL=http://34.224.12.85:3000/api" > .env
-
-            npm run build
-            pm2 delete cesizen-backoffice || true
-            pm2 start "npx vite preview --host --port 4173" --name cesizen-backoffice
-          EOF
-
-  deploy-app:
-    runs-on: ubuntu-latest
-    needs: deploy-api
-    steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-      - name: Deploy Expo App
-        run: |
-          ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
-            git pull origin main
-            cd APP
-            npm install --legacy-peer-deps
-            npx expo export --platform web --output-dir dist
-            pm2 delete cesizen-app || true
-            pm2 serve dist 8080 --spa --name cesizen-app
-          EOF
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Cloner / mettre à jour le dépôt (compose + configs)
+            mkdir -p ~/ressource-prod && cd ~/ressource-prod
+            if [ ! -d cesizen-prod ]; then
+              git clone -b main https://github.com/${{ github.repository }} cesizen-prod
+            fi
+            cd cesizen-prod && git pull origin main
+            export DOCKER_USER=${{ secrets.DOCKERHUB_USERNAME }}
+            export TAG=${{ github.sha }}
+            export JWT_SECRET='${{ secrets.JWT_SECRET }}'
+            sudo docker compose -f API/docker-compose.prod.yml pull
+            sudo docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
 
   setup-reverse-proxy:
     runs-on: ubuntu-latest
-    needs: [deploy-app, deploy-backoffice]
+    needs: deploy-stack
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
