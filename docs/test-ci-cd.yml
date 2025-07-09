@@ -1,0 +1,321 @@
+# name: CI + CD Prod
+
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#     branches: ["*"]
+
+# concurrency:
+#   group: ci-${{ github.ref }}
+#   cancel-in-progress: true
+
+# # ------------------------------ CI ------------------------------
+
+# jobs:
+#   ci-api:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Setup Node + cache
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+#           cache: "npm"
+
+#       - name: Install deps
+#         run: npm ci --legacy-peer-deps --prefix API
+
+#       - name: Lint API
+#         run: npm run lint --prefix API --if-present
+#         continue-on-error: true
+
+#       - name: Test API
+#         run: npm test --prefix API --if-present
+#         continue-on-error: true
+
+#       - name: Audit API
+#         run: npm audit --prefix API --if-present
+#         continue-on-error: true
+
+#       - name: Build API
+#         run: npm run build --prefix API
+
+#       - name: Upload API build
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: API-dist
+#           path: API/dist
+
+#   ci-backoffice:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Setup Node + cache
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+#           cache: "npm"
+
+#       - name: Install deps
+#         run: npm ci --legacy-peer-deps --prefix BACKOFFICE
+
+#       - name: Lint Backoffice
+#         run: npm run lint --prefix BACKOFFICE
+#         continue-on-error: true
+
+#       - name: Audit Backoffice
+#         run: npm audit --prefix BACKOFFICE --if-present
+#         continue-on-error: true
+
+#       - name: Build Backoffice
+#         run: npm run build --prefix BACKOFFICE
+#         continue-on-error: true
+
+#       - name: Upload Backoffice build
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: BACKOFFICE-dist
+#           path: BACKOFFICE/dist
+
+#   ci-app:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Setup Node + cache
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 18
+#           cache: "npm"
+
+#       - name: Install deps
+#         run: npm ci --legacy-peer-deps --prefix APP
+
+#       - name: Lint Mobile App
+#         run: npm run lint --prefix APP
+#         continue-on-error: true
+
+#       - name: Audit Mobile App
+#         run: npm audit --prefix APP --if-present
+#         continue-on-error: true
+
+#       - name: Build Expo Web
+#         run: npx expo export --platform web --output-dir APP/dist --non-interactive
+#         continue-on-error: true
+
+#       - name: Upload App build
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: APP-dist
+#           path: APP/dist
+
+#   # ---------------- CD ----------------
+#   deploy-db:
+#     runs-on: ubuntu-latest
+#     needs: [ci-api, ci-backoffice, ci-app]
+#     steps:
+#       - name: Setup SSH
+#         uses: webfactory/ssh-agent@v0.7.0
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+#       - name: Deploy Prod DB
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+#             docker volume create cesizen-db-data || true
+#             docker stop cesizen-postgres || true
+#             docker rm cesizen-postgres || true
+#             docker run -d \
+#               --name cesizen-postgres \
+#               -e POSTGRES_USER=postgres \
+#               -e POSTGRES_PASSWORD=postgres \
+#               -e POSTGRES_DB=cesizen \
+#               -v cesizen-db-data:/var/lib/postgresql/data \
+#               -p 5432:5432 \
+#               postgres:15
+#             sleep 10
+#           EOF
+
+#   deploy-api:
+#     runs-on: ubuntu-latest
+#     needs: deploy-db
+#     steps:
+#       - name: Setup SSH
+#         uses: webfactory/ssh-agent@v0.7.0
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+#       - name: Deploy API
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+#             cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
+#             git pull origin main
+#             cd API
+#             npm install
+#             npx prisma generate
+
+#             echo "PORT=3000" > .env
+#             echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/cesizen" >> .env
+#             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+
+#             npx prisma migrate deploy
+#             npm run build
+#             pm2 delete cesizen-api || true
+#             pm2 start dist/server.js --name cesizen-api
+#           EOF
+
+#   deploy-backoffice:
+#     runs-on: ubuntu-latest
+#     needs: deploy-api
+#     steps:
+#       - name: Setup SSH
+#         uses: webfactory/ssh-agent@v0.7.0
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+#       - name: Deploy Backoffice
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+#             cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
+#             git pull origin main
+#             cd BACKOFFICE
+#             npm install --legacy-peer-deps
+
+#             echo "VITE_API_URL=http://34.224.12.85:3000/api" > .env
+
+#             npm run build
+#             pm2 delete cesizen-backoffice || true
+#             pm2 start "npx vite preview --host --port 4173" --name cesizen-backoffice
+#           EOF
+
+#   deploy-app:
+#     runs-on: ubuntu-latest
+#     needs: deploy-api
+#     steps:
+#       - name: Setup SSH
+#         uses: webfactory/ssh-agent@v0.7.0
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+#       - name: Deploy Expo App
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+#             cd ~/cesizen-prod || git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod && cd ~/cesizen-prod
+#             git pull origin main
+#             cd APP
+#             npm install --legacy-peer-deps
+#             npx expo export --platform web --output-dir dist
+#             pm2 delete cesizen-app || true
+#             pm2 serve dist 8080 --spa --name cesizen-app
+#           EOF
+
+#   setup-reverse-proxy:
+#     runs-on: ubuntu-latest
+#     needs: [deploy-app, deploy-backoffice]
+#     steps:
+#       - name: Setup SSH
+#         uses: webfactory/ssh-agent@v0.7.0
+#         with:
+#           ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+#       - name: Setup Reverse Proxy on EC2
+#         run: |
+#           ssh -o StrictHostKeyChecking=no -p ${{ secrets.EC2_PORT }} ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+#             echo "📦 Installing Nginx..."
+#             sudo apt-get update
+#             sudo apt-get install -y nginx
+
+#             echo "🛑 Stopping default nginx service..."
+#             sudo systemctl stop nginx
+#             sudo systemctl disable nginx
+
+#             echo "📄 Writing nginx configuration..."
+#             sudo tee /etc/nginx/sites-available/cesizen << 'NGINX_CONFIG'
+#           #########################################
+#           # ENVIRONNEMENT TEST
+#           #########################################
+#           server {
+#             listen 80;
+#             server_name cesizentest.webredirect.org;
+
+#             location / {
+#               proxy_pass http://localhost:8082/;
+#               proxy_set_header Host $host;
+#               proxy_set_header X-Real-IP $remote_addr;
+#               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#               proxy_set_header X-Forwarded-Proto $scheme;
+#             }
+
+#             location /backoffice/ {
+#             proxy_pass http://localhost:4175/;
+#             proxy_set_header Host $host;
+#             proxy_set_header X-Real-IP $remote_addr;
+#             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#             proxy_set_header X-Forwarded-Proto $scheme;
+#             proxy_redirect off;
+
+#             # Réécrit l'URL pour que /backoffice/... => /...
+#             rewrite ^/backoffice(/.*)$ $1 break;
+#           }
+
+#             location /api/ {
+#               proxy_pass http://localhost:3001/api/;
+#               proxy_set_header Host $host;
+#               proxy_set_header X-Real-IP $remote_addr;
+#               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#               proxy_set_header X-Forwarded-Proto $scheme;
+#             }
+#           }
+
+#           #########################################
+#           # ENVIRONNEMENT PROD
+#           #########################################
+#           server {
+#             listen 80;
+#             server_name cesizenprod.webredirect.org;
+
+#             location / {
+#               proxy_pass http://localhost:8080/;
+#               proxy_set_header Host $host;
+#               proxy_set_header X-Real-IP $remote_addr;
+#               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#               proxy_set_header X-Forwarded-Proto $scheme;
+#             }
+
+#             location /backoffice/ {
+#             proxy_pass http://localhost:4173/;
+#             proxy_set_header Host $host;
+#             proxy_set_header X-Real-IP $remote_addr;
+#             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#             proxy_set_header X-Forwarded-Proto $scheme;
+#             proxy_redirect off;
+
+#             # Réécrit l'URL pour que /backoffice/... => /...
+#             rewrite ^/backoffice(/.*)$ $1 break;
+#           }
+
+#             location /api/ {
+#               proxy_pass http://localhost:3000/api/;
+#               proxy_set_header Host $host;
+#               proxy_set_header X-Real-IP $remote_addr;
+#               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#               proxy_set_header X-Forwarded-Proto $scheme;
+#             }
+#           }
+#           NGINX_CONFIG
+
+#             echo "🔗 Enabling nginx site..."
+#             sudo rm -f /etc/nginx/sites-enabled/default
+#             sudo ln -sf /etc/nginx/sites-available/cesizen /etc/nginx/sites-enabled/
+
+#             echo "✅ Testing nginx configuration..."
+#             sudo nginx -t
+
+#             echo "🚀 Starting nginx service..."
+#             sudo systemctl enable nginx
+#             sudo systemctl start nginx
+#             sudo systemctl reload nginx
+
+#             echo "📊 Nginx status:"
+#             sudo systemctl status nginx --no-pager -l
+#           EOF

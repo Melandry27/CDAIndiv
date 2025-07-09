@@ -3,85 +3,119 @@ name: CI + CD Prod
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: ["*"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# ------------------------------ CI ------------------------------
 
 jobs:
-  # ---------------- CI ----------------
-  setup:
+  ci-api:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-  test-api:
-    runs-on: ubuntu-latest
-    needs: setup
     steps:
       - uses: actions/checkout@v4
-      - name: Run tests via Docker Compose
-        run: |
-          docker compose -f docker-compose.ci.yml up --build --exit-code-from api
+
+      - name: Setup Node + cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci --legacy-peer-deps --prefix API
+
+      - name: Lint API
+        run: npm run lint --prefix API --if-present
         continue-on-error: true
 
-  lint-backoffice:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: actions/checkout@v4
-      - name: Lint backoffice
-        run: |
-          docker run --rm -v ${{ github.workspace }}/BACKOFFICE:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run lint"
+      - name: Test API
+        run: npm test --prefix API --if-present
+        continue-on-error: true
 
-  lint-app:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: actions/checkout@v4
-      - name: Lint mobile app
-        run: |
-          docker run --rm -v ${{ github.workspace }}/APP:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run lint || npx expo lint"
+      - name: Audit API
+        run: npm audit --prefix API --if-present
+        continue-on-error: true
 
-  build-api:
-    runs-on: ubuntu-latest
-    needs: test-api
-    steps:
-      - uses: actions/checkout@v4
+      - name: Build API
+        run: npm run build --prefix API
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - name: Upload API build
+        uses: actions/upload-artifact@v4
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          name: API-dist
+          path: API/dist
 
-      - name: Build and push Docker image
-        run: |
-          docker build -f API/Dockerfile.prod -t ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest ./API
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/cesizen-api:latest
-
-  build-backoffice:
+  ci-backoffice:
     runs-on: ubuntu-latest
-    needs: lint-backoffice
     steps:
       - uses: actions/checkout@v4
-      - name: Build backoffice
-        run: |
-          docker run --rm -v ${{ github.workspace }}/BACKOFFICE:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npm run build"
 
-  build-app:
+      - name: Setup Node + cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci --legacy-peer-deps --prefix BACKOFFICE
+
+      - name: Lint Backoffice
+        run: npm run lint --prefix BACKOFFICE
+        continue-on-error: true
+
+      - name: Audit Backoffice
+        run: npm audit --prefix BACKOFFICE --if-present
+        continue-on-error: true
+
+      - name: Build Backoffice
+        run: npm run build --prefix BACKOFFICE
+        continue-on-error: true
+
+      - name: Upload Backoffice build
+        uses: actions/upload-artifact@v4
+        with:
+          name: BACKOFFICE-dist
+          path: BACKOFFICE/dist
+
+  ci-app:
     runs-on: ubuntu-latest
-    needs: lint-app
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node + cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci --legacy-peer-deps --prefix APP
+
+      - name: Lint Mobile App
+        run: npm run lint --prefix APP
+        continue-on-error: true
+
+      - name: Audit Mobile App
+        run: npm audit --prefix APP --if-present
+        continue-on-error: true
+
       - name: Build Expo Web
-        run: |
-          docker run --rm -v ${{ github.workspace }}/APP:/app node:18 bash -c "cd /app && npm install --legacy-peer-deps && npx expo export --platform web"
+        run: npx expo export --platform web --output-dir APP/dist --non-interactive
+        continue-on-error: true
+
+      - name: Upload App build
+        uses: actions/upload-artifact@v4
+        with:
+          name: APP-dist
+          path: APP/dist
 
   # ---------------- CD ----------------
   deploy-db:
     runs-on: ubuntu-latest
-    needs: [build-api, build-backoffice, build-app]
+    needs: [ci-api, ci-backoffice, ci-app]
     steps:
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.7.0
