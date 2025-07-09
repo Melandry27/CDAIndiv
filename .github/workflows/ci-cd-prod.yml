@@ -210,15 +210,12 @@ jobs:
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            cd ~
-            if [ ! -d cesizen-prod ]; then
-              rm -rf ~/cesizen-prod
-              git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod
-            fi
-            cd cesizen-prod && git pull origin main
+            rm -rf ~/cesizen-prod
+            git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod
+            cd ~/cesizen-prod 
 
-            export DOCKER_USER=ghcr.io/melandry27/cdaindiv      # même préfixe que dans la CI
-            export TAG=${{ github.sha }}                        # même tag SHA que les images
+            export DOCKER_USER=ghcr.io/melandry27/cdaindiv    
+            export TAG=${{ github.sha }}                       
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
 
             sudo docker compose -f API/docker-compose.prod.yml pull
