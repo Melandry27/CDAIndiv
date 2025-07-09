@@ -134,8 +134,8 @@ jobs:
           file: ./API/Dockerfile.prod
           push: true
           tags: |
-            ghcr.io/melandry27/cdaindiv/api:latest
-            ghcr.io/melandry27/cdaindiv/api:${{ github.sha }}
+            ghcr.io/melandry27/cdaindiv/cesizen-api:latest
+            ghcr.io/melandry27/cdaindiv/cesizen-api:${{ github.sha }}
           build-args: |
             PORT=3000
             DATABASE_URL=postgres://postgres:postgres@localhost:5432/cesizen
@@ -163,8 +163,8 @@ jobs:
           file: ./BACKOFFICE/Dockerfile.prod
           push: true
           tags: |
-            ghcr.io/melandry27/cdaindiv/backoffice:latest
-            ghcr.io/melandry27/cdaindiv/backoffice:${{ github.sha }}
+            ghcr.io/melandry27/cdaindiv/cesizen-backoffice:latest
+            ghcr.io/melandry27/cdaindiv/cesizen-backoffice:${{ github.sha }}
           build-args: |
             VITE_API_URL=http://34.224.12.85:3000/api
 
@@ -188,8 +188,8 @@ jobs:
           file: ./APP/Dockerfile.prod
           push: true
           tags: |
-            ghcr.io/melandry27/cdaindiv/app:latest
-            ghcr.io/melandry27/cdaindiv/app:${{ github.sha }}
+            ghcr.io/melandry27/cdaindiv/cesizen-app:latest
+            ghcr.io/melandry27/cdaindiv/cesizen-app:${{ github.sha }}
 
   # ------------------------------ CD ------------------------------
 
