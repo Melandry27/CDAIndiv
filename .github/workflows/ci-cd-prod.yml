@@ -214,7 +214,6 @@ jobs:
             if [ ! -d cesizen-prod ]; then
               rm -rf ~/cesizen-prod
               git clone -b main https://github.com/${{ github.repository }} ~/cesizen-prod
-              cd ~/cesizen-prod
             fi
             cd cesizen-prod && git pull origin main
 
