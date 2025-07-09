@@ -134,7 +134,7 @@ jobs:
           file: ./API/Dockerfile.prod
           target: api
           push: true
-          tags: ghcr.io/melandry27/CDAIndiv/api:${{ github.ref_name }}
+          tags: ghcr.io/melandry27/cdaindiv/api:${{ github.ref_name }}
           build-args: |
             PORT=3000
             DATABASE_URL=postgres://postgres:postgres@localhost:5432/cesizen
@@ -162,8 +162,8 @@ jobs:
           file: ./BACKOFFICE/Dockerfile.prod
           push: true
           tags: |
-            ghcr.io/melandry27/CDAIndiv/backoffice:latest
-            ghcr.io/melandry27/CDAIndiv/backoffice:${{ github.sha }}
+            ghcr.io/melandry27/cdaindiv/backoffice:latest
+            ghcr.io/melandry27/cdaindiv/backoffice:${{ github.sha }}
           build-args: |
             VITE_API_URL=http://34.224.12.85:3000/api
 
@@ -187,8 +187,8 @@ jobs:
           file: ./APP/Dockerfile.prod
           push: true
           tags: |
-            ghcr.io/melandry27/CDAIndiv/app:latest
-            ghcr.io/melandry27/CDAIndiv/app:${{ github.sha }}
+            ghcr.io/melandry27/cdaindiv/app:latest
+            ghcr.io/melandry27/cdaindiv/app:${{ github.sha }}
 
   # ---------------- CD ----------------
   # ------------------------------ CD ------------------------------
@@ -218,7 +218,7 @@ jobs:
             fi
             cd cesizen-prod && git pull origin main
 
-            export DOCKER_USER=ghcr.io/melandry27/CDAIndiv      # même préfixe que dans la CI
+            export DOCKER_USER=ghcr.io/melandry27/cdaindiv      # même préfixe que dans la CI
             export TAG=${{ github.sha }}                        # même tag SHA que les images
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
 
