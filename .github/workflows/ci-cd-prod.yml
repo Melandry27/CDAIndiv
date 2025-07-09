@@ -133,7 +133,9 @@ jobs:
           context: ./API
           file: ./API/Dockerfile.prod
           push: true
-          tags: ghcr.io/melandry27/cdaindiv/api:${{ github.ref_name }}
+          tags: |
+            ghcr.io/melandry27/cdaindiv/api:latest
+            ghcr.io/melandry27/cdaindiv/api:${{ github.sha }}
           build-args: |
             PORT=3000
             DATABASE_URL=postgres://postgres:postgres@localhost:5432/cesizen
@@ -218,8 +220,10 @@ jobs:
             export TAG=${{ github.sha }}                       
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
 
-            sudo docker compose -f API/docker-compose.prod.yml pull
-            sudo docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
+            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET \ 
+              docker compose -f API/docker-compose.prod.yml pull
+            sudo --preserve-env=DOCKER_USER,TAG,JWT_SECRET \ 
+              docker compose -f API/docker-compose.prod.yml up -d --remove-orphans
 
   setup-reverse-proxy:
     runs-on: ubuntu-latest
