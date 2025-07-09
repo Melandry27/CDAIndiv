@@ -132,7 +132,6 @@ jobs:
         with:
           context: ./API
           file: ./API/Dockerfile.prod
-          target: api
           push: true
           tags: ghcr.io/melandry27/cdaindiv/api:${{ github.ref_name }}
           build-args: |
