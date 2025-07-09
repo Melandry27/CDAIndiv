@@ -193,7 +193,7 @@ jobs:
 
   deploy-stack:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name == 'main' }} # on livre la prod uniquement depuis main
+    if: ${{ github.ref_name == 'main' }}
     environment:
       name: prod
       url: http://34.224.12.85
